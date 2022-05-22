@@ -617,6 +617,14 @@ PyConfig
 
       Default: ``0``.
 
+   .. c:member:: int py2x_warning
+
+      If equals to ``1``, issue a warning for 3.x compatibility.
+
+      Incremented by the :option:`-2` command line option.
+
+      Default: ``0``.
+
    .. c:member:: int warn_default_encoding
 
       If non-zero, emit a :exc:`EncodingWarning` warning when :class:`io.TextIOWrapper`

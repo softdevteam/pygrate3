@@ -195,6 +195,7 @@ Objects/exceptions.c	-	_PyExc_FutureWarning	-
 Objects/exceptions.c	-	_PyExc_ImportWarning	-
 Objects/exceptions.c	-	_PyExc_UnicodeWarning	-
 Objects/exceptions.c	-	_PyExc_BytesWarning	-
+Objects/exceptions.c	-	_PyExc_Py2xWarning	-
 Objects/exceptions.c	-	_PyExc_ResourceWarning	-
 Objects/exceptions.c	-	PyExc_EnvironmentError	-
 Objects/exceptions.c	-	PyExc_IOError	-

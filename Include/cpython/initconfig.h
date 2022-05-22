@@ -158,6 +158,7 @@ typedef struct PyConfig {
     PyWideStringList warnoptions;
     int site_import;
     int bytes_warning;
+    int py2x_warning;
     int warn_default_encoding;
     int inspect;
     int interactive;

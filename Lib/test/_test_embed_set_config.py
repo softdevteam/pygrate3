@@ -69,6 +69,7 @@ class SetConfigTests(unittest.TestCase):
             'parse_argv',
             'site_import',
             'bytes_warning',
+            'py2x_warning',
             'inspect',
             'interactive',
             'optimization_level',

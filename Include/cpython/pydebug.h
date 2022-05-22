@@ -20,6 +20,7 @@ PyAPI_DATA(int) Py_NoUserSiteDirectory;
 PyAPI_DATA(int) Py_UnbufferedStdioFlag;
 PyAPI_DATA(int) Py_HashRandomizationFlag;
 PyAPI_DATA(int) Py_IsolatedFlag;
+PyAPI_DATA(int) Py_Py2xWarningFlag;
 
 #ifdef MS_WINDOWS
 PyAPI_DATA(int) Py_LegacyWindowsFSEncodingFlag;

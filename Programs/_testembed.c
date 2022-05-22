@@ -494,6 +494,7 @@ static int test_init_global_config(void)
     /* Py_IsolatedFlag is not tested */
     Py_NoSiteFlag = 1;
     Py_BytesWarningFlag = 1;
+    Py_Py2xWarningFlag = 1;
 
     putenv("PYTHONINSPECT=");
     Py_InspectFlag = 1;
@@ -630,6 +631,9 @@ static int test_init_from_config(void)
 
     Py_BytesWarningFlag = 0;
     config.bytes_warning = 1;
+
+    Py_Py2xWarningFlag = 0;
+    config.py2x_warning = 1;
 
     putenv("PYTHONINSPECT=");
     Py_InspectFlag = 0;
@@ -960,6 +964,7 @@ static void set_all_global_config_variables(void)
     Py_IsolatedFlag = 0;
     Py_IgnoreEnvironmentFlag = 0;
     Py_BytesWarningFlag = 2;
+    Py_Py2xWarningFlag = 1;
     Py_InspectFlag = 1;
     Py_InteractiveFlag = 1;
     Py_OptimizeFlag = 1;
@@ -1562,6 +1567,7 @@ static int test_init_warnoptions(void)
 
     config.dev_mode = 1;
     config.bytes_warning = 1;
+    config.py2x_warning = 1;
 
     config_set_program_name(&config);
 

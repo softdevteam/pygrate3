@@ -55,6 +55,7 @@ BaseException
       │         └── UnicodeTranslateError
       └── Warning
            ├── BytesWarning
+           ├── Py2xWarning
            ├── DeprecationWarning
            ├── EncodingWarning
            ├── FutureWarning
