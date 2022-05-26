@@ -2562,13 +2562,6 @@ config_init_warnoptions(PyConfig *config,
         }
     }
 
-    if (config->py2x_warning) {
-        status = warnoptions_append(config, &options, L"default::Py2xWarning");
-        if (_PyStatus_EXCEPTION(status)) {
-            goto error;
-        }
-    }
-
     status = warnoptions_extend(config, &options, env_warnoptions);
     if (_PyStatus_EXCEPTION(status)) {
         goto error;

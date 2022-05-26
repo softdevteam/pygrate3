@@ -684,7 +684,7 @@ class CmdLineTest(unittest.TestCase):
         # Warnings
         code = ("import warnings; "
                 "print(' '.join('%s::%s' % (f[0], f[2].__name__) "
-                                "for f in warnings.filters))") 
+                                "for f in warnings.filters))")
         if Py_DEBUG:
             expected_filters = "default::Warning"
         else:

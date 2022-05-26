@@ -1537,7 +1537,6 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
             'ignore:::cmdline1',              # -W opt command line option
             'ignore:::cmdline2',              # -W opt command line option
             'default::BytesWarning',          # PyConfig.bytes_warnings=1
-            'default::Py2xWarning',           # PyConfig.py2x_warnings=1
             'ignore:::PySys_AddWarnOption1',  # PySys_AddWarnOption()
             'ignore:::PySys_AddWarnOption2',  # PySys_AddWarnOption()
             'ignore:::PyConfig_BeforeRead',   # PyConfig.warnoptions
