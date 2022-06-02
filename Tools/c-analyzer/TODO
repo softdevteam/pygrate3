@@ -662,6 +662,7 @@ Objects/exceptions.c:PyExc_BlockingIOError                       static PyTypeOb
 Objects/exceptions.c:PyExc_BrokenPipeError                       static PyTypeObject PyExc_BrokenPipeError
 Objects/exceptions.c:PyExc_BufferError                           static PyTypeObject PyExc_BufferError
 Objects/exceptions.c:PyExc_BytesWarning                          static PyTypeObject PyExc_BytesWarning
+Objects/exceptions.c:PyExc_Py2xWarning                          static PyTypeObject PyExc_Py2xWarning
 Objects/exceptions.c:PyExc_ChildProcessError                     static PyTypeObject PyExc_ChildProcessError
 Objects/exceptions.c:PyExc_ConnectionAbortedError                static PyTypeObject PyExc_ConnectionAbortedError
 Objects/exceptions.c:PyExc_ConnectionError                       static PyTypeObject PyExc_ConnectionError
@@ -728,6 +729,7 @@ Objects/exceptions.c:_PyExc_BlockingIOError                      static PyTypeOb
 Objects/exceptions.c:_PyExc_BrokenPipeError                      static PyTypeObject _PyExc_BrokenPipeError
 Objects/exceptions.c:_PyExc_BufferError                          static PyTypeObject _PyExc_BufferError
 Objects/exceptions.c:_PyExc_BytesWarning                         static PyTypeObject _PyExc_BytesWarning
+Objects/exceptions.c:_PyExc_Py2xWarning                         static PyTypeObject _PyExc_Py2xWarning
 Objects/exceptions.c:_PyExc_ChildProcessError                    static PyTypeObject _PyExc_ChildProcessError
 Objects/exceptions.c:_PyExc_ConnectionAbortedError               static PyTypeObject _PyExc_ConnectionAbortedError
 Objects/exceptions.c:_PyExc_ConnectionError                      static PyTypeObject _PyExc_ConnectionError

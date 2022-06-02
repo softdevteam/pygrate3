@@ -34,6 +34,7 @@ Options and arguments (and corresponding environment variables):\n\
 -b     : issue warnings about str(bytes_instance), str(bytearray_instance)\n\
          and comparing bytes/bytearray with str. (-bb: issue errors)\n\
 -B     : don't write .pyc files on import; also PYTHONDONTWRITEBYTECODE=x\n\
+-2     : issue warnings about 3.x compatibility\n\
 -c cmd : program passed in as string (terminates option list)\n\
 -d     : turn on parser debugging output (for experts only, only works on\n\
          debug builds); also PYTHONDEBUG=x\n\
@@ -171,6 +172,7 @@ int Py_NoUserSiteDirectory = 0; /* for -s and site.py */
 int Py_UnbufferedStdioFlag = 0; /* Unbuffered binary std{in,out,err} */
 int Py_HashRandomizationFlag = 0; /* for -R and PYTHONHASHSEED */
 int Py_IsolatedFlag = 0; /* for -I, isolate from user's env */
+int Py_Py2xWarningFlag = 0; /* Warn on 3.x incompatibility*/
 #ifdef MS_WINDOWS
 int Py_LegacyWindowsFSEncodingFlag = 0; /* Uses mbcs instead of utf-8 */
 int Py_LegacyWindowsStdioFlag = 0; /* Uses FileIO instead of WindowsConsoleIO */
@@ -223,6 +225,7 @@ _Py_GetGlobalVariablesAsDict(void)
     SET_ITEM_INT(Py_OptimizeFlag);
     SET_ITEM_INT(Py_NoSiteFlag);
     SET_ITEM_INT(Py_BytesWarningFlag);
+    SET_ITEM_INT(Py_Py2xWarningFlag);
     SET_ITEM_INT(Py_FrozenFlag);
     SET_ITEM_INT(Py_IgnoreEnvironmentFlag);
     SET_ITEM_INT(Py_DontWriteBytecodeFlag);
@@ -617,6 +620,7 @@ config_check_consistency(const PyConfig *config)
     assert(config->malloc_stats >= 0);
     assert(config->site_import >= 0);
     assert(config->bytes_warning >= 0);
+    assert(config->py2x_warning >= 0);
     assert(config->warn_default_encoding >= 0);
     assert(config->inspect >= 0);
     assert(config->interactive >= 0);
@@ -719,6 +723,7 @@ _PyConfig_InitCompatConfig(PyConfig *config)
     config->parse_argv = 0;
     config->site_import = -1;
     config->bytes_warning = -1;
+    config->py2x_warning = -1;
     config->warn_default_encoding = 0;
     config->inspect = -1;
     config->interactive = -1;
@@ -758,6 +763,7 @@ config_init_defaults(PyConfig *config)
     config->use_environment = 1;
     config->site_import = 1;
     config->bytes_warning = 0;
+    config->py2x_warning = 0;
     config->inspect = 0;
     config->interactive = 0;
     config->optimization_level = 0;
@@ -940,6 +946,7 @@ _PyConfig_Copy(PyConfig *config, const PyConfig *config2)
 
     COPY_ATTR(site_import);
     COPY_ATTR(bytes_warning);
+    COPY_ATTR(py2x_warning);
     COPY_ATTR(warn_default_encoding);
     COPY_ATTR(inspect);
     COPY_ATTR(interactive);
@@ -1047,6 +1054,7 @@ _PyConfig_AsDict(const PyConfig *config)
     SET_ITEM_WSTR(platlibdir);
     SET_ITEM_INT(site_import);
     SET_ITEM_INT(bytes_warning);
+    SET_ITEM_INT(py2x_warning);
     SET_ITEM_INT(warn_default_encoding);
     SET_ITEM_INT(inspect);
     SET_ITEM_INT(interactive);
@@ -1316,6 +1324,7 @@ _PyConfig_FromDict(PyConfig *config, PyObject *dict)
     GET_WSTRLIST(warnoptions);
     GET_UINT(site_import);
     GET_UINT(bytes_warning);
+    GET_UINT(py2x_warning);
     GET_UINT(warn_default_encoding);
     GET_UINT(inspect);
     GET_UINT(interactive);
@@ -1439,6 +1448,7 @@ config_get_global_vars(PyConfig *config)
     COPY_FLAG(isolated, Py_IsolatedFlag);
     COPY_NOT_FLAG(use_environment, Py_IgnoreEnvironmentFlag);
     COPY_FLAG(bytes_warning, Py_BytesWarningFlag);
+    COPY_FLAG(py2x_warning, Py_Py2xWarningFlag);
     COPY_FLAG(inspect, Py_InspectFlag);
     COPY_FLAG(interactive, Py_InteractiveFlag);
     COPY_FLAG(optimization_level, Py_OptimizeFlag);
@@ -1476,6 +1486,7 @@ config_set_global_vars(const PyConfig *config)
     COPY_FLAG(isolated, Py_IsolatedFlag);
     COPY_NOT_FLAG(use_environment, Py_IgnoreEnvironmentFlag);
     COPY_FLAG(bytes_warning, Py_BytesWarningFlag);
+    COPY_FLAG(py2x_warning, Py_Py2xWarningFlag);
     COPY_FLAG(inspect, Py_InspectFlag);
     COPY_FLAG(interactive, Py_InteractiveFlag);
     COPY_FLAG(optimization_level, Py_OptimizeFlag);
@@ -2320,6 +2331,10 @@ config_parse_cmdline(PyConfig *config, PyWideStringList *warnoptions,
 
         case 'b':
             config->bytes_warning++;
+            break;
+
+        case '2':
+            config->py2x_warning++;
             break;
 
         case 'd':

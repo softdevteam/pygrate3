@@ -672,7 +672,7 @@ class SysModuleTest(unittest.TestCase):
                  "warn_default_encoding", "safe_path")
         for attr in attrs:
             self.assertTrue(hasattr(sys.flags, attr), attr)
-            attr_type = bool if attr in ("dev_mode", "safe_path") else int
+            attr_type = bool if attr in ("dev_mode", "py2x_warning", "safe_path") else int
             self.assertEqual(type(getattr(sys.flags, attr)), attr_type, attr)
         self.assertTrue(repr(sys.flags))
         self.assertEqual(len(sys.flags), len(attrs))

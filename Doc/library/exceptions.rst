@@ -855,6 +855,10 @@ The following exceptions are used as warning categories; see the
 
    Base class for warnings related to :class:`bytes` and :class:`bytearray`.
 
+.. exception:: Py2xWarning
+
+   Base class for warnings related to 3.x compatibility.
+
 
 .. exception:: ResourceWarning
 

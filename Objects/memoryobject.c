@@ -1121,7 +1121,7 @@ get_native_fmtchar(char *result, const char *fmt)
     if (fmt[0] == '@') fmt++;
 
     switch (fmt[0]) {
-    case 'c': case 'b': case 'B': size = sizeof(char); break;
+    case 'c': case '2': case 'b': case 'B': size = sizeof(char); break;
     case 'h': case 'H': size = sizeof(short); break;
     case 'i': case 'I': size = sizeof(int); break;
     case 'l': case 'L': size = sizeof(long); break;
@@ -1159,6 +1159,7 @@ get_native_fmtstr(const char *fmt)
     switch (fmt[0]) {
     case 'c': RETURN("c");
     case 'b': RETURN("b");
+    case '2': RETURN("2");
     case 'B': RETURN("B");
     case 'h': RETURN("h");
     case 'H': RETURN("H");
