@@ -305,6 +305,7 @@ do_mkvalue(const char **p_format, va_list *p_va, int flags)
                              countformat(*p_format, '}'), flags);
 
         case 'b':
+        case '2':
         case 'B':
         case 'h':
         case 'i':

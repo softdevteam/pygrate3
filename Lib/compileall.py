@@ -375,6 +375,8 @@ def main():
     parser.add_argument('--hardlink-dupes', action='store_true',
                         dest='hardlink_dupes',
                         help='Hardlink duplicated pyc files')
+    parser.add_argument('-2', dest='py2x', action='store_true',
+                       help='show warnings for 3.x compatibility')
 
     args = parser.parse_args()
     compile_dests = args.compile_dest

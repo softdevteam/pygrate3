@@ -316,6 +316,8 @@ def _create_parser():
                        help='override the working directory for the test run')
     group.add_argument('--cleanup', action='store_true',
                        help='remove old test_python_* directories')
+    group.add_argument('-2', dest='py2x', action='store_true',
+                       help='show warnings for 3.x compatibility')
     return parser
 
 

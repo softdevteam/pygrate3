@@ -2473,6 +2473,7 @@ static PyStructSequence_Field flags_fields[] = {
     {"ignore_environment",      "-E"},
     {"verbose",                 "-v"},
     {"bytes_warning",           "-b"},
+    {"py2x_warning",            "-2"},
     {"quiet",                   "-q"},
     {"hash_randomization",      "-R"},
     {"isolated",                "-I"},
@@ -2521,6 +2522,7 @@ set_flags_from_config(PyInterpreterState *interp, PyObject *flags)
     SetFlag(!config->use_environment);
     SetFlag(config->verbose);
     SetFlag(config->bytes_warning);
+    SetFlag(config->py2x_warning);
     SetFlag(config->quiet);
     SetFlag(config->use_hash_seed == 0 || config->hash_seed != 0);
     SetFlag(config->isolated);

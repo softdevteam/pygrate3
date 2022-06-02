@@ -89,6 +89,12 @@ to 1 and ``-bb`` sets :c:data:`Py_BytesWarningFlag` to 2.
 
    Set by the :option:`-b` option.
 
+.. c:var:: int Py_Py2xWarningFlag
+
+   Issue a warning regarding 3.x compatibility.
+
+   Set by the :option:`-2` option.
+
 .. c:var:: int Py_DebugFlag
 
    Turn on parser debugging output (for expert only, depending on compilation

@@ -3386,6 +3386,12 @@ SimpleExtendsException(PyExc_Warning, BytesWarning,
     "Base class for warnings about bytes and buffer related problems, mostly\n"
     "related to conversion from str or comparing to str.");
 
+/*
+ *    BytesWarning extends Warning
+ */
+SimpleExtendsException(PyExc_Warning, Py2xWarning,
+    "Base class for warnings about 3.x compatibility.");
+
 
 /*
  *    EncodingWarning extends Warning
@@ -3504,6 +3510,7 @@ static struct static_exception static_exceptions[] = {
 
     // Level 4: Warning(Exception) subclasses
     ITEM(BytesWarning),
+    ITEM(Py2xWarning),
     ITEM(DeprecationWarning),
     ITEM(EncodingWarning),
     ITEM(FutureWarning),

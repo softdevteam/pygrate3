@@ -516,6 +516,7 @@ always available.
    :const:`ignore_environment`   :option:`-E`
    :const:`verbose`              :option:`-v`
    :const:`bytes_warning`        :option:`-b`
+   :const:`py2x_warning`         :option:`-2`
    :const:`quiet`                :option:`-q`
    :const:`hash_randomization`   :option:`-R`
    :const:`dev_mode`             :option:`-X dev <-X>` (:ref:`Python Development Mode <devmode>`)

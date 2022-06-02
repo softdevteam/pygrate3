@@ -702,6 +702,17 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
         break;
     }
 
+    case '2': {/* byte sized bitfield - both signed and unsigned
+                  values allowed */
+        char *p = va_arg(*p_va, char *);
+        unsigned long ival = PyLong_AsUnsignedLongMask(arg);
+        if (ival == (unsigned long)-1 && PyErr_Occurred())
+            RETURN_ERR_OCCURRED;
+        else
+            *p = (unsigned char) ival;
+        break;
+    }
+
     case 'h': {/* signed short int */
         short *p = va_arg(*p_va, short *);
         long ival = PyLong_AsLong(arg);
@@ -2606,6 +2617,7 @@ skipitem(const char **p_format, va_list *p_va, int flags)
     case 'c': /* char */
     case 'C': /* unicode char */
     case 'p': /* boolean predicate */
+    case '2': /* boolean predicate */
     case 'S': /* string object */
     case 'Y': /* string object */
     case 'U': /* unicode string object */

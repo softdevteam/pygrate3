@@ -298,6 +298,7 @@ def _args_from_interpreter_flags():
         'verbose': 'v',
         'bytes_warning': 'b',
         'quiet': 'q',
+        'py2x_warning': '2',
         # -O is handled in _optim_args_from_interpreter_flags()
     }
     args = _optim_args_from_interpreter_flags()
