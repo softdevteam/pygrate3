@@ -69,6 +69,7 @@ class SetConfigTests(unittest.TestCase):
             'parse_argv',
             'site_import',
             'bytes_warning',
+            'py2x_warning',
             'inspect',
             'interactive',
             'optimization_level',
@@ -158,6 +159,7 @@ class SetConfigTests(unittest.TestCase):
             ("bytes_warning", "bytes_warning", 10),
             ("quiet", "quiet", 11),
             ("isolated", "isolated", 12),
+            ("py2x_warning", "py2x_warning", 13),
         ):
             with self.subTest(sys=sys_attr, key=key, value=value):
                 self.set_config(**{key: value, 'parse_argv': 0})

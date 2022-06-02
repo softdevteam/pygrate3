@@ -473,6 +473,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
 
         'site_import': 1,
         'bytes_warning': 0,
+        'py2x_warning': 0,
         'warn_default_encoding': 0,
         'inspect': 0,
         'interactive': 0,
@@ -541,6 +542,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
         # Copy core config to global config for expected values
         # True means that the core config value is inverted (0 => 1 and 1 => 0)
         ('Py_BytesWarningFlag', 'bytes_warning'),
+        ('Py_Py2xWarningFlag', 'py2x_warning'),
         ('Py_DebugFlag', 'parser_debug'),
         ('Py_DontWriteBytecodeFlag', 'write_bytecode', True),
         ('Py_FileSystemDefaultEncodeErrors', 'filesystem_errors'),
@@ -809,6 +811,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
             'program_name': './globalvar',
             'site_import': 0,
             'bytes_warning': 1,
+            'py2x_warning': 1,
             'warnoptions': ['default::BytesWarning'],
             'inspect': 1,
             'interactive': 1,
@@ -865,6 +868,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
 
             'site_import': 0,
             'bytes_warning': 1,
+            'py2x_warning': 1,
             'inspect': 1,
             'interactive': 1,
             'optimization_level': 2,
@@ -1542,6 +1546,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
             'dev_mode': 1,
             'faulthandler': 1,
             'bytes_warning': 1,
+            'py2x_warning': 1,
             'warnoptions': warnoptions,
             'orig_argv': ['python3',
                           '-Wignore:::cmdline1',

@@ -104,6 +104,9 @@ The following warnings category classes are currently defined:
 | :exc:`BytesWarning`              | Base category for warnings related to         |
 |                                  | :class:`bytes` and :class:`bytearray`.        |
 +----------------------------------+-----------------------------------------------+
+| :exc:`Py2xWarning`               | Base category for warnings related to         |
+|                                  | 3.x compatibility.                            |
++----------------------------------+-----------------------------------------------+
 | :exc:`ResourceWarning`           | Base category for warnings related to         |
 |                                  | resource usage (ignored by default).          |
 +----------------------------------+-----------------------------------------------+
