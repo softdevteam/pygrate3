@@ -89,8 +89,8 @@ class PublicAPITests(BaseTest):
 
     def test_module_all_attribute(self):
         self.assertTrue(hasattr(self.module, '__all__'))
-        target_api = ["warn", "warn_explicit", "showwarning",
-                      "formatwarning", "filterwarnings", "simplefilter",
+        target_api = ["warn", "warn_explicit", "warn_explicit_with_fix", "showwarning", "showwarningwithfix",
+                      "formatwarning", "formatwarningwithfix", "filterwarnings", "simplefilter",
                       "resetwarnings", "catch_warnings"]
         self.assertSetEqual(set(self.module.__all__),
                             set(target_api))
@@ -902,6 +902,25 @@ class WarningsDisplayTests(BaseTest):
         expect = format % (file_name, line_num, category.__name__, message,
                             file_line)
         self.assertEqual(expect, self.module.formatwarning(message,
+                                    category, file_name, line_num, file_line))
+
+    def test_formatwarningwithfix(self):
+        message = "msg"
+        fix = "fix"
+        category = Warning
+        file_name = os.path.splitext(warning_tests.__file__)[0] + '.py'
+        line_num = 3
+        file_line = linecache.getline(file_name, line_num).strip()
+        format = "%s:%s: %s: %s: %s\n  %s\n"
+        expect = format % (file_name, line_num, category.__name__, message, fix,
+                            file_line)
+        self.assertEqual(expect, self.module.formatwarningwithfix(message, fix,
+                                                category, file_name, line_num))
+        # Test the 'line' argument.
+        file_line += " for the win!"
+        expect = format % (file_name, line_num, category.__name__, message, fix,
+                            file_line)
+        self.assertEqual(expect, self.module.formatwarningwithfix(message, fix,
                                     category, file_name, line_num, file_line))
 
     def test_showwarning(self):

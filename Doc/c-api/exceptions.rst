@@ -339,12 +339,25 @@ an error value).
 
    .. versionadded:: 3.4
 
+.. c:function:: int PyErr_WarnExplicitWithFixObject(PyObject *category, PyObject *message, PyObject *fix, PyObject *filename, int lineno, PyObject *module, PyObject *registry)
+
+   Issue a warning message and fix with explicit control over all warning attributes.  This
+   is a straightforward wrapper around the Python function
+   :func:`warnings.warnings_warn_explicit_with_fix`; see there for more information.  The *module*
+   and *registry* arguments may be set to ``NULL`` to get the default effect
+   described there.
+
 
 .. c:function:: int PyErr_WarnExplicit(PyObject *category, const char *message, const char *filename, int lineno, const char *module, PyObject *registry)
 
    Similar to :c:func:`PyErr_WarnExplicitObject` except that *message* and
    *module* are UTF-8 encoded strings, and *filename* is decoded from the
    :term:`filesystem encoding and error handler`.
+
+
+.. c:function:: int PyErr_WarnExplicit_WithFix(PyObject *category, const char *message, const char *fix, const char *filename, int lineno, const char *module, PyObject *registry)
+
+   Similar to :c:func:`PyErr_WarnExplicit` with an additional *fix* parameter.
 
 
 .. c:function:: int PyErr_WarnFormat(PyObject *category, Py_ssize_t stack_level, const char *format, ...)
@@ -362,6 +375,11 @@ an error value).
    :exc:`ResourceWarning` and it passes *source* to :func:`warnings.WarningMessage`.
 
    .. versionadded:: 3.6
+
+.. c:function:: int PyErr_WarnPy2x(char *message, char *fix, int stacklevel)
+
+   Issue a :exc:`DeprecationWarning` with the given *message*, *fix* and *stacklevel*
+   if the :c:data:`Py_Py2xWarningFlag` flag is enabled.
 
 
 Querying the error indicator

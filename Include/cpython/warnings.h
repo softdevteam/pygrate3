@@ -10,6 +10,15 @@ PyAPI_FUNC(int) PyErr_WarnExplicitObject(
     PyObject *module,
     PyObject *registry);
 
+PyAPI_FUNC(int) PyErr_WarnExplicitWithFixObject(
+    PyObject *category,
+    PyObject *message,
+    PyObject *fix,
+    PyObject *filename,
+    int lineno,
+    PyObject *module,
+    PyObject *registry);
+
 PyAPI_FUNC(int) PyErr_WarnExplicitFormat(
     PyObject *category,
     const char *filename, int lineno,
