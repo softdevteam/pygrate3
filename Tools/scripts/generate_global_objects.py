@@ -22,7 +22,9 @@ IDENTIFIERS = [
 
     # from GET_WARNINGS_ATTR() in Python/_warnings.c
     'WarningMessage',
+    'WarningMessageAndFix',
     '_showwarnmsg',
+    '_showwarnmsgwithfix',
     '_warn_unawaited_coroutine',
     'defaultaction',
     'filters',

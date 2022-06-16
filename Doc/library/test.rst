@@ -526,6 +526,18 @@ The :mod:`test.support` module defines the following functions:
    Return a list of command line arguments reproducing the current
    optimization settings in ``sys.flags``.
 
+.. function:: check_py2x_warnings(*filters, quiet=False)
+
+   Similar to :func:`check_warnings`, but for Python 3 compatibility warnings.
+   If ``sys.py3xwarning == 1``, it checks if the warning is effectively raised.
+   If ``sys.py3xwarning == 0``, it checks that no warning is raised.  It
+   accepts 2-tuples of the form ``("message regexp", WarningCategory)`` as
+   positional arguments.  When the optional keyword argument *quiet* is
+   :const:`True`, it does not fail if a filter catches nothing.  Without
+   arguments, it defaults to::
+
+      check_py2x_warnings(("", DeprecationWarning), quiet=False)
+
 
 .. function:: captured_stdin()
               captured_stdout()

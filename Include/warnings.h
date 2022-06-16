@@ -9,6 +9,12 @@ PyAPI_FUNC(int) PyErr_WarnEx(
     const char *message,        /* UTF-8 encoded string */
     Py_ssize_t stack_level);
 
+PyAPI_FUNC(int) PyErr_WarnEx_WithFix(
+    PyObject *category,
+    const char *message,    /* UTF-8 encoded string */
+    const char *fix,        /* UTF-8 encoded string */
+    Py_ssize_t stack_level);
+
 PyAPI_FUNC(int) PyErr_WarnFormat(
     PyObject *category,
     Py_ssize_t stack_level,
@@ -31,6 +37,18 @@ PyAPI_FUNC(int) PyErr_WarnExplicit(
     int lineno,
     const char *module,         /* UTF-8 encoded string */
     PyObject *registry);
+
+PyAPI_FUNC(int) PyErr_WarnExplicit_WithFix(
+    PyObject *category,
+    const char *message,        /* UTF-8 encoded string */
+    const char *fix,            /* UTF-8 encoded string */
+    const char *filename,       /* decoded from the filesystem encoding */
+    int lineno,
+    const char *module,         /* UTF-8 encoded string */
+    PyObject *registry);
+
+#define PyErr_WarnPy2x(msg, fix, stacklevel) \
+  (Py_Py2xWarningFlag ? PyErr_WarnEx_WithFix(PyExc_DeprecationWarning, msg, fix, stacklevel) : 0)
 
 #ifndef Py_LIMITED_API
 #  define Py_CPYTHON_WARNINGS_H

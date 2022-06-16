@@ -419,11 +419,29 @@ Available Functions
    .. versionchanged:: 3.6
       Added *source* parameter.
 
-
 .. function:: warn_explicit(message, category, filename, lineno, module=None, registry=None, module_globals=None, source=None)
 
    This is a low-level interface to the functionality of :func:`warn`, passing in
    explicitly the message, category, filename and line number, and optionally the
+   module name and the registry (which should be the ``__warningregistry__``
+   dictionary of the module).  The module name defaults to the filename with
+   ``.py`` stripped; if no registry is passed, the warning is never suppressed.
+   *message* must be a string and *category* a subclass of :exc:`Warning` or
+   *message* may be a :exc:`Warning` instance, in which case *category* will be
+   ignored.
+
+   *module_globals*, if supplied, should be the global namespace in use by the code
+   for which the warning is issued.  (This argument is used to support displaying
+   source for modules found in zipfiles or other non-filesystem import
+   sources).
+
+   *source*, if supplied, is the destroyed object which emitted a
+   :exc:`ResourceWarning`.
+
+.. function:: warn_explicit_with_fix(message, fix, category, filename, lineno, module=None, registry=None, module_globals=None, source=None)
+
+   This is a low-level interface to the functionality of :func:`warn`, passing in
+   explicitly the message, fix, category, filename and line number, and optionally the
    module name and the registry (which should be the ``__warningregistry__``
    dictionary of the module).  The module name defaults to the filename with
    ``.py`` stripped; if no registry is passed, the warning is never suppressed.
@@ -454,7 +472,27 @@ Available Functions
    try to read the line specified by *filename* and *lineno*.
 
 
+.. function:: showwarningwithfix(message, fix, category, filename, lineno, file=None, line=None)
+
+   Write a warning to a file.  The default implementation calls
+   ``formatwarningwithfix(message, fix, category, filename, lineno, line)`` and writes the
+   resulting string to *file*, which defaults to :data:`sys.stderr`.  You may replace
+   this function with any callable by assigning to ``warnings.showwarning``.
+   *line* is a line of source code to be included in the warning
+   message; if *line* is not supplied, :func:`showwarning` will
+   try to read the line specified by *filename* and *lineno*.
+
+
 .. function:: formatwarning(message, category, filename, lineno, line=None)
+
+   Format a warning the standard way.  This returns a string which may contain
+   embedded newlines and ends in a newline.  *line* is a line of source code to
+   be included in the warning message; if *line* is not supplied,
+   :func:`formatwarning` will try to read the line specified by *filename* and
+   *lineno*.
+
+
+.. function:: formatwarningwithfix(message, fix, category, filename, lineno, line=None)
 
    Format a warning the standard way.  This returns a string which may contain
    embedded newlines and ends in a newline.  *line* is a line of source code to

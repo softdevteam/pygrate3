@@ -72,7 +72,10 @@ class WarningsRecorder(object):
             return getattr(self._warnings[-1], attr)
         elif attr in warnings.WarningMessage._WARNING_DETAILS:
             return None
+        elif attr in warnings.WarningMessageAndFix._WARNING_DETAILS:
+            return None
         raise AttributeError("%r has no attribute %r" % (self, attr))
+
 
     @property
     def warnings(self):
@@ -104,6 +107,29 @@ def check_warnings(*filters, **kwargs):
         if quiet is None:
             quiet = True
     return _filterwarnings(filters, quiet)
+
+
+@contextlib.contextmanager
+def check_py2x_warnings(*filters, **kwargs):
+    """Context manager to silence py2x warnings.
+
+    Accept 2-tuples as positional arguments:
+        ("message regexp", WarningCategory)
+
+    Optional argument:
+     - if 'quiet' is True, it does not fail if a filter catches nothing
+        (default False)
+
+    Without argument, it defaults to:
+        check_py2x_warnings(("", DeprecationWarning), quiet=False)
+    """
+    if sys.py2x_warning:
+        if not filters:
+            filters = (("", DeprecationWarning),)
+    else:
+        # It should not raise any py2x warning
+        filters = ()
+    return _filterwarnings(filters, kwargs.get('quiet'))
 
 
 @contextlib.contextmanager

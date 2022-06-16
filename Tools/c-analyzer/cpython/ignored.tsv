@@ -391,6 +391,7 @@ Objects/weakrefobject.c	weakref_call	kwlist	-
 Objects/exceptions.c	NameError_init	kwlist	-
 Objects/exceptions.c	AttributeError_init	kwlist	-
 Python/_warnings.c	warnings_warn_explicit	kwd_list	-
+Python/_warnings.c	warnings_warn_explicit_with_fix	kwd_list	-
 Python/bltinmodule.c	builtin___import__	kwlist	-
 Python/bltinmodule.c	min_max	kwlist	-
 Python/bltinmodule.c	zip_new	kwlist	-

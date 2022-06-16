@@ -2853,6 +2853,7 @@ _PySys_InitCore(PyThreadState *tstate, PyObject *sysdict)
     SET_SYS("maxsize", PyLong_FromSsize_t(PY_SSIZE_T_MAX));
     SET_SYS("float_info", PyFloat_GetInfo());
     SET_SYS("int_info", PyLong_GetInfo());
+    SET_SYS("py2x_warning", PyBool_FromLong(Py_Py2xWarningFlag));
     /* initialize hash_info */
     if (Hash_InfoType.tp_name == NULL) {
         if (PyStructSequence_InitType2(&Hash_InfoType, &hash_info_desc) < 0) {

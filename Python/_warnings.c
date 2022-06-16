@@ -9,6 +9,7 @@
 #include "clinic/_warnings.c.h"
 
 #define MODULE_NAME "_warnings"
+#define ACTION_NAME "always"
 
 PyDoc_STRVAR(warnings__doc__,
 MODULE_NAME " provides basic warning filtering support.\n"
@@ -622,6 +623,140 @@ error:
     return -1;
 }
 
+static void
+show_warning_with_fix(PyThreadState *tstate, PyObject *filename, int lineno,
+             PyObject *text, PyObject *fixtxt, PyObject *category, PyObject *sourceline)
+{
+    PyObject *f_stderr;
+    PyObject *name;
+    char lineno_str[128];
+
+    PyOS_snprintf(lineno_str, sizeof(lineno_str), ":%d: ", lineno);
+
+    name = PyObject_GetAttr(category, &_Py_ID(__name__));
+    if (name == NULL) {
+        goto error;
+    }
+
+    f_stderr = _PySys_GetAttr(tstate, &_Py_ID(stderr));
+    if (f_stderr == NULL) {
+        fprintf(stderr, "lost sys.stderr\n");
+        goto error;
+    }
+
+    /* Print "filename:lineno: category: text\n" */
+    if (PyFile_WriteObject(filename, f_stderr, Py_PRINT_RAW) < 0)
+        goto error;
+    if (PyFile_WriteString(lineno_str, f_stderr) < 0)
+        goto error;
+    if (PyFile_WriteObject(name, f_stderr, Py_PRINT_RAW) < 0)
+        goto error;
+    if (PyFile_WriteString(": ", f_stderr) < 0)
+        goto error;
+    if (PyFile_WriteObject(text, f_stderr, Py_PRINT_RAW) < 0)
+        goto error;
+    if (PyFile_WriteString(": ", f_stderr) < 0)
+        goto error;
+    if (PyFile_WriteObject(fixtxt, f_stderr, Py_PRINT_RAW) < 0)
+        goto error;
+    if (PyFile_WriteString("\n", f_stderr) < 0)
+        goto error;
+    Py_CLEAR(name);
+
+    /* Print "  source_line\n" */
+    if (sourceline) {
+        int kind;
+        const void *data;
+        Py_ssize_t i, len;
+        Py_UCS4 ch;
+        PyObject *truncated;
+
+        if (PyUnicode_READY(sourceline) < 1)
+            goto error;
+
+        kind = PyUnicode_KIND(sourceline);
+        data = PyUnicode_DATA(sourceline);
+        len = PyUnicode_GET_LENGTH(sourceline);
+        for (i=0; i<len; i++) {
+            ch = PyUnicode_READ(kind, data, i);
+            if (ch != ' ' && ch != '\t' && ch != '\014')
+                break;
+        }
+
+        truncated = PyUnicode_Substring(sourceline, i, len);
+        if (truncated == NULL)
+            goto error;
+
+        PyFile_WriteObject(sourceline, f_stderr, Py_PRINT_RAW);
+        Py_DECREF(truncated);
+        PyFile_WriteString("\n", f_stderr);
+    }
+    else {
+        _Py_DisplaySourceLine(f_stderr, filename, lineno, 2, NULL, NULL);
+    }
+
+error:
+    Py_XDECREF(name);
+    PyErr_Clear();
+}
+
+static int
+call_show_warning_with_fix(PyThreadState *tstate, PyObject *category,
+                  PyObject *text, PyObject *message, PyObject *fix_txt, PyObject *fix,
+                  PyObject *filename, int lineno, PyObject *lineno_obj,
+                  PyObject *sourceline, PyObject *source)
+{
+    PyObject *show_fn, *msg, *res, *warnmsg_cls = NULL;
+    PyInterpreterState *interp = tstate->interp;
+
+    /* If the source parameter is set, try to get the Python implementation.
+       The Python implementation is able to log the traceback where the source
+       was allocated, whereas the C implementation doesn't. */
+    show_fn = GET_WARNINGS_ATTR(interp, _showwarnmsgwithfix, source != NULL);
+    if (show_fn == NULL) {
+        if (PyErr_Occurred())
+            return -1;
+        show_warning_with_fix(tstate, filename, lineno, text, fix_txt, category, sourceline);
+        return 0;
+    }
+
+    if (!PyCallable_Check(show_fn)) {
+        PyErr_SetString(PyExc_TypeError,
+                "warnings._showwarnmsgwithfix() must be set to a callable");
+        goto error;
+    }
+
+    warnmsg_cls = GET_WARNINGS_ATTR(interp, WarningMessageAndFix, 0);
+    if (warnmsg_cls == NULL) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError,
+                    "unable to get warnings.WarningMessageAndFix");
+        }
+        goto error;
+    }
+
+    msg = PyObject_CallFunctionObjArgs(warnmsg_cls, message, fix, category,
+            filename, lineno_obj, Py_None, Py_None, source,
+            NULL);
+    Py_DECREF(warnmsg_cls);
+    if (msg == NULL)
+        goto error;
+
+    res = PyObject_CallOneArg(show_fn, msg);
+    Py_DECREF(show_fn);
+    Py_DECREF(msg);
+
+    if (res == NULL)
+        return -1;
+
+    Py_DECREF(res);
+    return 0;
+
+error:
+    Py_XDECREF(show_fn);
+    return -1;
+}
+
 static PyObject *
 warn_explicit(PyThreadState *tstate, PyObject *category, PyObject *message,
               PyObject *filename, int lineno,
@@ -712,7 +847,7 @@ warn_explicit(PyThreadState *tstate, PyObject *category, PyObject *message,
     /* Store in the registry that we've been here, *except* when the action
        is "always". */
     rc = 0;
-    if (!_PyUnicode_EqualToASCIIString(action, "always")) {
+    if (!_PyUnicode_EqualToASCIIString(action, ACTION_NAME)) {
         if (registry != NULL && registry != Py_None &&
             PyDict_SetItem(registry, key, Py_True) < 0)
         {
@@ -762,6 +897,151 @@ warn_explicit(PyThreadState *tstate, PyObject *category, PyObject *message,
     Py_XDECREF(lineno_obj);
     Py_DECREF(module);
     Py_XDECREF(message);
+    return result;  /* Py_None or NULL. */
+}
+
+static PyObject *
+warn_explicit_with_fix(PyThreadState *tstate, PyObject *category, PyObject *message,
+              PyObject *fix, PyObject *filename, int lineno,
+              PyObject *module, PyObject *registry, PyObject *sourceline,
+              PyObject *source)
+{
+    PyObject *key = NULL, *text = NULL, *fix_txt = NULL, *result = NULL, *lineno_obj = NULL;
+    PyObject *item = NULL;
+    PyObject *action;
+    int rc;
+    PyInterpreterState *interp = tstate->interp;
+
+    /* module can be None if a warning is emitted late during Python shutdown.
+       In this case, the Python warnings module was probably unloaded, filters
+       are no more available to choose as action. It is safer to ignore the
+       warning and do nothing. */
+    if (module == Py_None)
+        Py_RETURN_NONE;
+
+    if (registry && !PyDict_Check(registry) && (registry != Py_None)) {
+        PyErr_SetString(PyExc_TypeError, "'registry' must be a dict or None");
+        return NULL;
+    }
+
+    /* Normalize module. */
+    if (module == NULL) {
+        module = normalize_module(filename);
+        if (module == NULL)
+            return NULL;
+    }
+    else
+        Py_INCREF(module);
+
+    /* Normalize message. */
+    Py_INCREF(message);
+    Py_INCREF(fix);   /* DECREF'ed in cleanup. */
+    fix_txt = fix;
+    rc = PyObject_IsInstance(message, PyExc_Warning);
+    if (rc == -1) {
+        goto cleanup;
+    }
+    if (rc == 1) {
+        text = PyObject_Str(message);
+        if (text == NULL)
+            goto cleanup;
+        category = (PyObject*)Py_TYPE(message);
+    }
+    else {
+        text = message;
+        message = PyObject_CallOneArg(category, message);
+        if (message == NULL)
+            goto cleanup;
+    }
+
+    lineno_obj = PyLong_FromLong(lineno);
+    if (lineno_obj == NULL)
+        goto cleanup;
+
+    if (source == Py_None) {
+        source = NULL;
+    }
+
+    /* Create key. */
+    key = PyTuple_Pack(4, text, fix_txt, category, lineno_obj);
+    if (key == NULL)
+        goto cleanup;
+
+    if ((registry != NULL) && (registry != Py_None)) {
+        rc = already_warned(interp, registry, key, 0);
+        if (rc == -1)
+            goto cleanup;
+        else if (rc == 1)
+            goto return_none;
+        /* Else this warning hasn't been generated before. */
+    }
+
+    action = get_filter(interp, category, text, lineno, module, &item);
+    if (action == NULL)
+        goto cleanup;
+
+    if (_PyUnicode_EqualToASCIIString(action, "error")) {
+        PyErr_SetObject(category, message);
+        goto cleanup;
+    }
+
+    if (_PyUnicode_EqualToASCIIString(action, "ignore")) {
+        goto return_none;
+    }
+
+    /* Store in the registry that we've been here, *except* when the action
+       is "always". */
+    rc = 0;
+    if (!_PyUnicode_EqualToASCIIString(action, ACTION_NAME)) {
+        if (registry != NULL && registry != Py_None &&
+            PyDict_SetItem(registry, key, Py_True) < 0)
+        {
+            goto cleanup;
+        }
+
+        if (_PyUnicode_EqualToASCIIString(action, "once")) {
+            if (registry == NULL || registry == Py_None) {
+                registry = get_once_registry(interp);
+                if (registry == NULL)
+                    goto cleanup;
+            }
+            /* WarningsState.once_registry[(text, category)] = 1 */
+            rc = update_registry(interp, registry, text, category, 0);
+        }
+        else if (_PyUnicode_EqualToASCIIString(action, "module")) {
+            /* registry[(text, category, 0)] = 1 */
+            if (registry != NULL && registry != Py_None)
+                rc = update_registry(interp, registry, text, category, 0);
+        }
+        else if (!_PyUnicode_EqualToASCIIString(action, "default")) {
+            PyErr_Format(PyExc_RuntimeError,
+                        "Unrecognized action (%R) in warnings.filters:\n %R",
+                        action, item);
+            goto cleanup;
+        }
+    }
+
+    if (rc == 1)  /* Already warned for this module. */
+        goto return_none;
+    if (rc == -1 || (rc == 0 && call_show_warning_with_fix(tstate, category, text, 
+                                                           message, fix_txt, fix, filename,
+                                                           lineno, lineno_obj, sourceline, source) < 0)) {
+        goto cleanup;
+    }
+
+ return_none:
+    result = Py_None;
+    Py_INCREF(result);
+
+ cleanup:
+    Py_XDECREF(item);
+    Py_XDECREF(key);
+    Py_XDECREF(text);
+    Py_XDECREF(fix_txt);
+    Py_XDECREF(lineno_obj);
+    Py_DECREF(module);
+    Py_XDECREF(message);
+    Py_XDECREF(fix);
     return result;  /* Py_None or NULL. */
 }
 
@@ -931,6 +1211,29 @@ get_category(PyObject *message, PyObject *category)
 }
 
 static PyObject *
+do_warn_with_fix(PyObject *message, PyObject *fix, PyObject *category, 
+                 Py_ssize_t stack_level, PyObject *source)
+{
+    PyObject *filename, *module, *registry, *res;
+    int lineno;
+
+    PyThreadState *tstate = get_current_tstate();
+    if (tstate == NULL) {
+        return NULL;
+    }
+
+    if (!setup_context(stack_level, &filename, &lineno, &module, &registry))
+        return NULL;
+
+    res = warn_explicit_with_fix(tstate, category, message, fix, filename, lineno, module, registry,
+                        NULL, source);
+    Py_DECREF(filename);
+    Py_DECREF(registry);
+    Py_DECREF(module);
+    return res;
+}
+
+static PyObject *
 do_warn(PyObject *message, PyObject *category, Py_ssize_t stack_level,
         PyObject *source)
 {
@@ -1078,6 +1381,53 @@ warnings_warn_explicit(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+warnings_warn_explicit_with_fix(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwd_list[] = {"message", "fix", "category", "filename", "lineno",
+                                "module", "registry", "module_globals",
+                                "source", 0};
+    PyObject *message;
+    PyObject *fix;
+    PyObject *category;
+    PyObject *filename;
+    int lineno;
+    PyObject *module = NULL;
+    PyObject *registry = NULL;
+    PyObject *module_globals = NULL;
+    PyObject *sourceobj = NULL;
+    PyObject *source_line = NULL;
+    PyObject *returned;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOOUi|OOOO:warn_explicit_with_fix",
+                kwd_list, &message, &fix, &category, &filename, &lineno, &module,
+                &registry, &module_globals, &sourceobj))
+        return NULL;
+
+    PyThreadState *tstate = get_current_tstate();
+    if (tstate == NULL) {
+        return NULL;
+    }
+
+    if (module_globals && module_globals != Py_None) {
+        if (!PyDict_Check(module_globals)) {
+            PyErr_Format(PyExc_TypeError,
+                         "module_globals must be a dict, not '%.200s'",
+                         Py_TYPE(module_globals)->tp_name);
+            return NULL;
+        }
+
+        source_line = get_source_line(tstate->interp, module_globals, lineno);
+        if (source_line == NULL && PyErr_Occurred()) {
+            return NULL;
+        }
+    }
+    returned = warn_explicit_with_fix(tstate, category, message, fix, filename, lineno, module,
+                             registry, source_line, sourceobj);
+    Py_XDECREF(source_line);
+    return returned;
+}
+
+static PyObject *
 warnings_filters_mutated(PyObject *self, PyObject *Py_UNUSED(args))
 {
     PyInterpreterState *interp = get_current_interp();
@@ -1105,6 +1455,23 @@ warn_unicode(PyObject *category, PyObject *message,
         category = PyExc_RuntimeWarning;
 
     res = do_warn(message, category, stack_level, source);
+    if (res == NULL)
+        return -1;
+    Py_DECREF(res);
+
+    return 0;
+}
+
+static int
+warn_unicode_with_fix(PyObject *category, PyObject *message, PyObject *fix,
+             Py_ssize_t stack_level, PyObject *source)
+{
+    PyObject *res;
+
+    if (category == NULL)
+        category = PyExc_RuntimeWarning;
+
+    res = do_warn_with_fix(message, fix, category, stack_level, source);
     if (res == NULL)
         return -1;
     Py_DECREF(res);
@@ -1194,6 +1561,20 @@ PyErr_WarnEx(PyObject *category, const char *text, Py_ssize_t stack_level)
     return ret;
 }
 
+int
+PyErr_WarnEx_WithFix(PyObject *category, const char *msg_txt, const char *fix_txt, Py_ssize_t stack_level)
+{
+    int ret;
+    PyObject *message = PyUnicode_FromString(msg_txt);
+    if (message == NULL) return -1;
+    PyObject *fix = PyUnicode_FromString(fix_txt);
+    if (fix == NULL) return -1;
+    ret = warn_unicode_with_fix(category, message, fix, stack_level, NULL);
+    Py_DECREF(message);
+    Py_DECREF(fix);
+    return ret;
+}
+
 /* PyErr_Warn is only for backwards compatibility and will be removed.
    Use PyErr_WarnEx instead. */
 
@@ -1227,6 +1608,26 @@ PyErr_WarnExplicitObject(PyObject *category, PyObject *message,
 }
 
 int
+PyErr_WarnExplicitWithFixObject(PyObject *category, PyObject *message, PyObject *fix,
+                         PyObject *filename, int lineno,
+                         PyObject *module, PyObject *registry)
+{
+    PyObject *res;
+    if (category == NULL)
+        category = PyExc_RuntimeWarning;
+    PyThreadState *tstate = get_current_tstate();
+    if (tstate == NULL) {
+        return -1;
+    }
+    res = warn_explicit_with_fix(tstate, category, message, fix, filename, lineno,
+                        module, registry, NULL, NULL);
+    if (res == NULL)
+        return -1;
+    Py_DECREF(res);
+    return 0;
+}
+
+int
 PyErr_WarnExplicit(PyObject *category, const char *text,
                    const char *filename_str, int lineno,
                    const char *module_str, PyObject *registry)
@@ -1249,6 +1650,36 @@ PyErr_WarnExplicit(PyObject *category, const char *text,
 
  exit:
     Py_XDECREF(message);
+    Py_XDECREF(module);
+    Py_XDECREF(filename);
+    return ret;
+}
+
+int
+PyErr_WarnExplicit_WithFix(PyObject *category, const char *msg_txt, const char *fix_txt,
+                   const char *filename_str, int lineno,
+                   const char *module_str, PyObject *registry)
+{
+    PyObject *message = PyUnicode_FromString(msg_txt);
+    PyObject *fix = PyUnicode_FromString(fix_txt);
+    PyObject *filename = PyUnicode_DecodeFSDefault(filename_str);
+    PyObject *module = NULL;
+    int ret = -1;
+
+    if (message == NULL || filename == NULL || fix == NULL)
+        goto exit;
+    if (module_str != NULL) {
+        module = PyUnicode_FromString(module_str);
+        if (module == NULL)
+            goto exit;
+    }
+
+    ret = PyErr_WarnExplicitWithFixObject(category, message, fix, filename, lineno,
+                                   module, registry);
+
+ exit:
+    Py_XDECREF(message);
+    Py_XDECREF(fix);
     Py_XDECREF(module);
     Py_XDECREF(filename);
     return ret;
@@ -1351,10 +1782,15 @@ _PyErr_WarnUnawaitedCoroutine(PyObject *coro)
 PyDoc_STRVAR(warn_explicit_doc,
 "Low-level interface to warnings functionality.");
 
+PyDoc_STRVAR(warn_explicit_with_fix_doc,
+"Low-level interface to warnings functionality, with a fix argument.");
+
 static PyMethodDef warnings_functions[] = {
     WARNINGS_WARN_METHODDEF
     {"warn_explicit", _PyCFunction_CAST(warnings_warn_explicit),
         METH_VARARGS | METH_KEYWORDS, warn_explicit_doc},
+    {"warn_explicit_with_fix", _PyCFunction_CAST(warnings_warn_explicit_with_fix),
+        METH_VARARGS | METH_KEYWORDS, warn_explicit_with_fix_doc},
     {"_filters_mutated", _PyCFunction_CAST(warnings_filters_mutated), METH_NOARGS,
         NULL},
     /* XXX(brett.cannon): add showwarning? */

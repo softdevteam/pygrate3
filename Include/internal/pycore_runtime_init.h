@@ -679,6 +679,7 @@ extern "C" {
                 INIT_ID(TextIOWrapper), \
                 INIT_ID(True), \
                 INIT_ID(WarningMessage), \
+                INIT_ID(WarningMessageAndFix), \
                 INIT_ID(_), \
                 INIT_ID(__IOBase_closed), \
                 INIT_ID(__abc_tpflags__), \
@@ -843,6 +844,7 @@ extern "C" {
                 INIT_ID(_is_text_encoding), \
                 INIT_ID(_lock_unlock_module), \
                 INIT_ID(_showwarnmsg), \
+                INIT_ID(_showwarnmsgwithfix), \
                 INIT_ID(_shutdown), \
                 INIT_ID(_slotnames), \
                 INIT_ID(_strptime_time), \
