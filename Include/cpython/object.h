@@ -79,6 +79,7 @@ typedef struct {
     binaryfunc nb_and;
     binaryfunc nb_xor;
     binaryfunc nb_or;
+    coercion nb_coerce;
     unaryfunc nb_int;
     void *nb_reserved;  /* the slot formerly known as nb_long */
     unaryfunc nb_float;
@@ -126,6 +127,8 @@ typedef struct {
 } PyMappingMethods;
 
 typedef PySendResult (*sendfunc)(PyObject *iter, PyObject *value, PyObject **result);
+typedef int (*cmpfunc)(PyObject *, PyObject *);
+typedef PyObject *(*richcmpfunc) (PyObject *, PyObject *, int);
 
 typedef struct {
     unaryfunc am_await;
@@ -159,6 +162,7 @@ struct _typeobject {
     PyAsyncMethods *tp_as_async; /* formerly known as tp_compare (Python 2)
                                     or tp_reserved (Python 3) */
     reprfunc tp_repr;
+    cmpfunc tp_compare;
 
     /* Method suites for standard classes */
 

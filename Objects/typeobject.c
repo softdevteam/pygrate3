@@ -2755,6 +2755,12 @@ type_new_alloc(type_new_ctx *ctx)
     type->tp_flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HEAPTYPE |
                       Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC);
 
+     /* It's a new-style number unless it specifically inherits any
+       old-style numeric behavior */
+    if ((type->tp_flags & Py_TPFLAGS_CHECKTYPES) ||
+        (type->tp_as_number == NULL))
+        type->tp_flags |= Py_TPFLAGS_CHECKTYPES;
+
     // Initialize essential fields
     type->tp_as_async = &et->as_async;
     type->tp_as_number = &et->as_number;
@@ -4420,6 +4426,7 @@ PyTypeObject PyType_Type = {
     (traverseproc)type_traverse,                /* tp_traverse */
     (inquiry)type_clear,                        /* tp_clear */
     0,                                          /* tp_richcompare */
+    0,                                          /* tp_compare */
     offsetof(PyTypeObject, tp_weaklist),        /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
@@ -5632,6 +5639,7 @@ PyTypeObject PyBaseObject_Type = {
     0,                                          /* tp_traverse */
     0,                                          /* tp_clear */
     object_richcompare,                         /* tp_richcompare */
+    0,                                          /* tp_compare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
@@ -5782,6 +5790,7 @@ inherit_special(PyTypeObject *type, PyTypeObject *base)
     /* Copying tp_traverse and tp_clear is connected to the GC flags */
     if (!(type->tp_flags & Py_TPFLAGS_HAVE_GC) &&
         (base->tp_flags & Py_TPFLAGS_HAVE_GC) &&
+        (type->tp_flags & Py_TPFLAGS_HAVE_RICHCOMPARE/*GC slots exist*/) &&
         (!type->tp_traverse && !type->tp_clear)) {
         type->tp_flags |= Py_TPFLAGS_HAVE_GC;
         if (type->tp_traverse == NULL)
@@ -5790,6 +5799,11 @@ inherit_special(PyTypeObject *type, PyTypeObject *base)
             type->tp_clear = base->tp_clear;
     }
     type->tp_flags |= (base->tp_flags & Py_TPFLAGS_MANAGED_DICT);
+
+    if (!type->tp_as_number && base->tp_as_number) {
+        type->tp_flags &= ~Py_TPFLAGS_CHECKTYPES;
+        type->tp_flags |= base->tp_flags & Py_TPFLAGS_CHECKTYPES;
+    }
 
     if (type->tp_basicsize == 0)
         type->tp_basicsize = base->tp_basicsize;
@@ -5846,6 +5860,21 @@ overrides_hash(PyTypeObject *type)
     }
     return r;
 }
+
+static int
+overrides_name(PyTypeObject *type, char *name)
+{
+    PyObject *dict = type->tp_dict;
+
+    assert(dict != NULL);
+    if (PyDict_GetItemString(dict, name) != NULL) {
+        return 1;
+    }
+    return 0;
+}
+
+#define OVERRIDES_HASH(x)       overrides_name(x, "__hash__")
+#define OVERRIDES_EQ(x)         overrides_name(x, "__eq__")
 
 static int
 inherit_slots(PyTypeObject *type, PyTypeObject *base)
@@ -5907,11 +5936,15 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
         COPYNUM(nb_inplace_and);
         COPYNUM(nb_inplace_xor);
         COPYNUM(nb_inplace_or);
-        COPYNUM(nb_true_divide);
-        COPYNUM(nb_floor_divide);
-        COPYNUM(nb_inplace_true_divide);
-        COPYNUM(nb_inplace_floor_divide);
-        COPYNUM(nb_index);
+        if (base->tp_flags & Py_TPFLAGS_CHECKTYPES) {
+            COPYNUM(nb_true_divide);
+            COPYNUM(nb_floor_divide);
+            COPYNUM(nb_inplace_true_divide);
+            COPYNUM(nb_inplace_floor_divide);
+        }
+        if (type->tp_flags & Py_TPFLAGS_HAVE_INDEX) {
+            COPYNUM(nb_index);
+        }
         COPYNUM(nb_matrix_multiply);
         COPYNUM(nb_inplace_matrix_multiply);
     }
@@ -5986,43 +6019,49 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
         COPYSLOT(tp_call);
     }
     COPYSLOT(tp_str);
-    {
-        /* Copy comparison-related slots only when
-           not overriding them anywhere */
-        if (type->tp_richcompare == NULL &&
+    if (type->tp_flags & base->tp_flags & Py_TPFLAGS_HAVE_RICHCOMPARE) {
+        if (type->tp_compare == NULL &&
+            type->tp_richcompare == NULL &&
             type->tp_hash == NULL)
         {
-            int r = overrides_hash(type);
-            if (r < 0) {
-                return -1;
-            }
-            if (!r) {
-                type->tp_richcompare = base->tp_richcompare;
-                type->tp_hash = base->tp_hash;
+            type->tp_compare = base->tp_compare;
+            type->tp_richcompare = base->tp_richcompare;
+            type->tp_hash = base->tp_hash;
+            /* Check for changes to inherited methods in Py3k*/ 
+            if (Py_Py2xWarningFlag) {
+                if (base->tp_hash &&
+                                (base->tp_hash != PyObject_HashNotImplemented) &&
+                                !OVERRIDES_HASH(type)) {
+                    if (OVERRIDES_EQ(type)) {
+                        if (PyErr_WarnPy2x("Overriding "
+                                           "__eq__ blocks inheritance "
+                                           "of __hash__ in 3.x", "avoid inheritance",
+                                           1) < 0)
+                            /* XXX This isn't right.  If the warning is turned
+                               into an exception, we should be communicating
+                               the error back to the caller, but figuring out
+                               how to clean up in that case is tricky.  See
+                               issue 8627 for more. */
+                            PyErr_Clear();
+                    }
+                }
             }
         }
     }
-    {
+    else {
+        COPYSLOT(tp_compare);
+    }
+    if (type->tp_flags & base->tp_flags & Py_TPFLAGS_HAVE_ITER) {
         COPYSLOT(tp_iter);
         COPYSLOT(tp_iternext);
     }
-    {
+    if (type->tp_flags & base->tp_flags & Py_TPFLAGS_HAVE_CLASS) {
         COPYSLOT(tp_descr_get);
-        /* Inherit Py_TPFLAGS_METHOD_DESCRIPTOR if tp_descr_get was inherited,
-         * but only for extension types */
-        if (base->tp_descr_get &&
-            type->tp_descr_get == base->tp_descr_get &&
-            _PyType_HasFeature(type, Py_TPFLAGS_IMMUTABLETYPE) &&
-            _PyType_HasFeature(base, Py_TPFLAGS_METHOD_DESCRIPTOR))
-        {
-            type->tp_flags |= Py_TPFLAGS_METHOD_DESCRIPTOR;
-        }
         COPYSLOT(tp_descr_set);
         COPYSLOT(tp_dictoffset);
         COPYSLOT(tp_init);
         COPYSLOT(tp_alloc);
         COPYSLOT(tp_is_gc);
-        COPYSLOT(tp_finalize);
         if ((type->tp_flags & Py_TPFLAGS_HAVE_GC) ==
             (base->tp_flags & Py_TPFLAGS_HAVE_GC)) {
             /* They agree about gc. */
@@ -6030,7 +6069,7 @@ inherit_slots(PyTypeObject *type, PyTypeObject *base)
         }
         else if ((type->tp_flags & Py_TPFLAGS_HAVE_GC) &&
                  type->tp_free == NULL &&
-                 base->tp_free == PyObject_Free) {
+                 base->tp_free == PyObject_DEL) {
             /* A bit of magic to plug in the correct default
              * tp_free function when a derived class adds gc,
              * didn't define tp_free, and the base uses the
@@ -6660,6 +6699,11 @@ wrap_binaryfunc_l(PyObject *self, PyObject *args, void *wrapped)
     if (!check_num_args(args, 1))
         return NULL;
     other = PyTuple_GET_ITEM(args, 0);
+    if (!(self->ob_type->tp_flags & Py_TPFLAGS_CHECKTYPES) &&
+        !PyType_IsSubtype(other->ob_type, self->ob_type)) {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
     return (*func)(self, other);
 }
 
@@ -6672,6 +6716,11 @@ wrap_binaryfunc_r(PyObject *self, PyObject *args, void *wrapped)
     if (!check_num_args(args, 1))
         return NULL;
     other = PyTuple_GET_ITEM(args, 0);
+    if (!(self->ob_type->tp_flags & Py_TPFLAGS_CHECKTYPES) &&
+        !PyType_IsSubtype(other->ob_type, self->ob_type)) {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
     return (*func)(other, self);
 }
 
@@ -6855,6 +6904,32 @@ wrap_delitem(PyObject *self, PyObject *args, void *wrapped)
     if (res == -1 && PyErr_Occurred())
         return NULL;
     Py_RETURN_NONE;
+}
+
+static PyObject *
+wrap_cmpfunc(PyObject *self, PyObject *args, void *wrapped)
+{
+    cmpfunc func = (cmpfunc)wrapped;
+    int res;
+    PyObject *other;
+
+    if (!check_num_args(args, 1))
+        return NULL;
+    other = PyTuple_GET_ITEM(args, 0);
+    if (Py_TYPE(other)->tp_compare != func &&
+        !PyType_IsSubtype(Py_TYPE(other), Py_TYPE(self))) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "%s.__cmp__(x,y) requires y to be a '%s', not a '%s'",
+            Py_TYPE(self)->tp_name,
+            Py_TYPE(self)->tp_name,
+            Py_TYPE(other)->tp_name);
+        return NULL;
+    }
+    res = (*func)(self, other);
+    if (PyErr_Occurred())
+        return NULL;
+    return PyLong_FromLong((long)res);
 }
 
 /* Helper to check for object.__setattr__ or __delattr__ applied to a type.
@@ -7521,6 +7596,62 @@ SLOT1BIN(slot_nb_true_divide, nb_true_divide, __truediv__, __rtruediv__)
 SLOT1(slot_nb_inplace_floor_divide, __ifloordiv__, PyObject *)
 SLOT1(slot_nb_inplace_true_divide, __itruediv__, PyObject *)
 
+static int
+half_compare(PyObject *self, PyObject *other)
+{
+    PyObject *func, *args, *res;
+    int unbound;
+    Py_ssize_t c;
+
+    func = lookup_method(self, &_Py_ID(__cmp__), &unbound);
+    if (func == NULL) {
+        PyErr_Clear();
+    }
+    else {
+        args = PyTuple_Pack(1, other);
+        if (args == NULL)
+            res = NULL;
+        else {
+            res = PyObject_Call(func, args, NULL);
+            Py_DECREF(args);
+        }
+        Py_DECREF(func);
+        if (res != Py_NotImplemented) {
+            if (res == NULL)
+                return -2;
+            c = PyLong_AsLong(res);
+            Py_DECREF(res);
+            if (c == -1 && PyErr_Occurred())
+                return -2;
+            return (c < 0) ? -1 : (c > 0) ? 1 : 0;
+        }
+        Py_DECREF(res);
+    }
+    return 2;
+}
+
+/* This slot is published for the benefit of try_3way_compare in object.c */
+int
+_PyObject_SlotCompare(PyObject *self, PyObject *other)
+{
+    int c;
+
+    if (Py_TYPE(self)->tp_compare == _PyObject_SlotCompare) {
+        c = half_compare(self, other);
+        if (c <= 1)
+            return c;
+    }
+    if (Py_TYPE(other)->tp_compare == _PyObject_SlotCompare) {
+        c = half_compare(other, self);
+        if (c < -1)
+            return -2;
+        if (c <= 1)
+            return -c;
+    }
+    return (void *)self < (void *)other ? -1 :
+        (void *)self > (void *)other ? 1 : 0;
+}
+
 static PyObject *
 slot_tp_repr(PyObject *self)
 {
@@ -8042,6 +8173,8 @@ static slotdef slotdefs[] = {
            "__gt__($self, value, /)\n--\n\nReturn self>value."),
     TPSLOT("__ge__", tp_richcompare, slot_tp_richcompare, richcmp_ge,
            "__ge__($self, value, /)\n--\n\nReturn self>=value."),
+    TPSLOT("__cmp__", tp_compare, _PyObject_SlotCompare, wrap_cmpfunc,
+           "x.__cmp__(y) <==> cmp(x,y)"),
     TPSLOT("__iter__", tp_iter, slot_tp_iter, wrap_unaryfunc,
            "__iter__($self, /)\n--\n\nImplement iter(self)."),
     TPSLOT("__next__", tp_iternext, slot_tp_iternext, wrap_next,
@@ -8191,6 +8324,7 @@ static slotdef slotdefs[] = {
     SQSLOT("__imul__", sq_inplace_repeat, NULL,
            wrap_indexargfunc,
            "__imul__($self, value, /)\n--\n\nImplement self*=value."),
+
 
     {NULL}
 };
@@ -9185,6 +9319,7 @@ PyTypeObject PySuper_Type = {
     super_traverse,                             /* tp_traverse */
     0,                                          /* tp_clear */
     0,                                          /* tp_richcompare */
+    0,                                          /* tp_compare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */

@@ -379,7 +379,8 @@ _PyWeakref_RefType = {
     .tp_repr = (reprfunc)weakref_repr,
     .tp_hash = (hashfunc)weakref_hash,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
-                Py_TPFLAGS_HAVE_VECTORCALL | Py_TPFLAGS_BASETYPE,
+                Py_TPFLAGS_HAVE_VECTORCALL | Py_TPFLAGS_HAVE_RICHCOMPARE
+                | Py_TPFLAGS_BASETYPE,
     .tp_traverse = (traverseproc)gc_traverse,
     .tp_clear = (inquiry)gc_clear,
     .tp_richcompare = (richcmpfunc)weakref_richcompare,
@@ -412,6 +413,13 @@ proxy_checkref(PyWeakReference *proxy)
         if (PyWeakref_CheckProxy(o)) { \
             if (!proxy_checkref((PyWeakReference *)o)) \
                 return NULL; \
+            o = PyWeakref_GET_OBJECT(o); \
+        }
+
+#define UNWRAP_I(o) \
+        if (PyWeakref_CheckProxy(o)) { \
+            if (!proxy_checkref((PyWeakReference *)o)) \
+                return -1; \
             o = PyWeakref_GET_OBJECT(o); \
         }
 
@@ -496,6 +504,14 @@ proxy_setattr(PyWeakReference *proxy, PyObject *name, PyObject *value)
     int res = PyObject_SetAttr(obj, name, value);
     Py_DECREF(obj);
     return res;
+}
+
+static int
+proxy_compare(PyObject *proxy, PyObject *v)
+{
+    UNWRAP_I(proxy);
+    UNWRAP_I(v);
+    return PyObject_Compare(proxy, v);
 }
 
 static PyObject *
@@ -676,6 +692,7 @@ static PyNumberMethods proxy_as_number = {
     proxy_and,              /*nb_and*/
     proxy_xor,              /*nb_xor*/
     proxy_or,               /*nb_or*/
+    0,                      /*nb_coerce*/
     proxy_int,              /*nb_int*/
     0,                      /*nb_reserved*/
     proxy_float,            /*nb_float*/
@@ -727,6 +744,7 @@ _PyWeakref_ProxyType = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    proxy_compare,                      /* tp_compare */
     0,                                  /* tp_as_async */
     (reprfunc)proxy_repr,               /* tp_repr */
     &proxy_as_number,                   /* tp_as_number */
@@ -739,7 +757,8 @@ _PyWeakref_ProxyType = {
     proxy_getattr,                      /* tp_getattro */
     (setattrofunc)proxy_setattr,        /* tp_setattro */
     0,                                  /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC, /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC 
+    | Py_TPFLAGS_CHECKTYPES,            /* tp_flags */
     0,                                  /* tp_doc */
     (traverseproc)gc_traverse,          /* tp_traverse */
     (inquiry)gc_clear,                  /* tp_clear */
@@ -762,6 +781,7 @@ _PyWeakref_CallableProxyType = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    proxy_compare,                      /* tp_compare */
     0,                                  /* tp_as_async */
     (unaryfunc)proxy_repr,              /* tp_repr */
     &proxy_as_number,                   /* tp_as_number */
@@ -773,7 +793,8 @@ _PyWeakref_CallableProxyType = {
     proxy_getattr,                      /* tp_getattro */
     (setattrofunc)proxy_setattr,        /* tp_setattro */
     0,                                  /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC, /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC
+    | Py_TPFLAGS_CHECKTYPES,            /* tp_flags */
     0,                                  /* tp_doc */
     (traverseproc)gc_traverse,          /* tp_traverse */
     (inquiry)gc_clear,                  /* tp_clear */

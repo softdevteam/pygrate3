@@ -228,6 +228,8 @@ PyAPI_FUNC(PyObject *) PyObject_CallMethodObjArgs(
     PyObject *name,
     ...);
 
+PyAPI_FUNC(int) PyObject_Cmp(PyObject *o1, PyObject *o2, int *result);
+
 
 /* Implemented elsewhere:
 

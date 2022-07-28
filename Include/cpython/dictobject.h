@@ -5,6 +5,16 @@
 typedef struct _dictkeysobject PyDictKeysObject;
 typedef struct _dictvalues PyDictValues;
 
+typedef struct {
+    /* Cached hash code of me_key.  Note that hash codes are C longs.
+     * We have to use Py_ssize_t instead because dict_popitem() abuses
+     * me_hash to hold a search finger.
+     */
+    Py_ssize_t me_hash;
+    PyObject *me_key;
+    PyObject *me_value;
+} PyDictEntry;
+
 /* The ma_values pointer is NULL for a combined table
  * or points to an array of PyObject* for a split table
  */
@@ -13,6 +23,19 @@ typedef struct {
 
     /* Number of items in the dictionary */
     Py_ssize_t ma_used;
+
+    /* The table contains ma_mask + 1 slots, and that's a power of 2.
+     * We store the mask instead of the size because the mask is more
+     * frequently needed.
+     */
+    Py_ssize_t ma_mask;
+
+    /* ma_table points to ma_smalltable for small tables, else to
+     * additional malloc'ed memory.  ma_table is never NULL!  This rule
+     * saves repeated runtime null-tests in the workhorse getitem and
+     * setitem calls.
+     */
+    PyDictEntry *ma_table;
 
     /* Dictionary version: globally unique, value change each time
        the dictionary is modified */

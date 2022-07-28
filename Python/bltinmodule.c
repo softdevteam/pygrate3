@@ -633,6 +633,7 @@ PyTypeObject PyFilter_Type = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    0,                                  /* tp_compare */
     0,                                  /* tp_as_async */
     0,                                  /* tp_repr */
     0,                                  /* tp_as_number */
@@ -704,6 +705,26 @@ builtin_chr_impl(PyObject *module, int i)
 /*[clinic end generated code: output=c733afcd200afcb7 input=3f604ef45a70750d]*/
 {
     return PyUnicode_FromOrdinal(i);
+}
+
+
+/*[clinic input]
+cmp as builtin_cmp
+
+    self: object
+    args: object
+    /
+
+Return negative if x<y, zero if x==y, positive if x>y.
+[clinic start generated code]*/
+static PyObject *
+builtin_cmp_impl(PyObject *module, PyObject *a, PyObject *b)
+{
+    int c;
+
+    if (PyObject_Cmp(a, b, &c) < 0)
+        return NULL;
+    return PyLong_FromLong((long)c);
 }
 
 
@@ -1419,6 +1440,7 @@ PyTypeObject PyMap_Type = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    0,                                  /* tp_compare */
     0,                                  /* tp_as_async */
     0,                                  /* tp_repr */
     0,                                  /* tp_as_number */
@@ -2912,6 +2934,7 @@ PyTypeObject PyZip_Type = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    0,                                  /* tp_compare */
     0,                                  /* tp_as_async */
     0,                                  /* tp_repr */
     0,                                  /* tp_as_number */
@@ -2975,6 +2998,7 @@ static PyMethodDef builtin_methods[] = {
     BUILTIN_INPUT_METHODDEF
     BUILTIN_ISINSTANCE_METHODDEF
     BUILTIN_ISSUBCLASS_METHODDEF
+    BUILTIN_CMP_METHODDEF
     {"iter", _PyCFunction_CAST(builtin_iter), METH_FASTCALL, iter_doc},
     BUILTIN_AITER_METHODDEF
     BUILTIN_LEN_METHODDEF

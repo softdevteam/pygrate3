@@ -2583,6 +2583,7 @@ PyTypeObject PyCursesWindow_Type = {
     0,                          /*tp_vectorcall_offset*/
     (getattrfunc)0,             /*tp_getattr*/
     (setattrfunc)0,             /*tp_setattr*/
+    0,                          /* tp_compare*/
     0,                          /*tp_as_async*/
     0,                          /*tp_repr*/
     0,                          /*tp_as_number*/

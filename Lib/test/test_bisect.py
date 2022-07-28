@@ -320,6 +320,11 @@ class CmpErr:
     __eq__ = __lt__
     __ne__ = __lt__
 
+class CmpErrPy2x:
+    "Dummy element that always raises an error during comparison"
+    def __cmp__(self, other):
+        raise ZeroDivisionError
+
 class TestErrorHandling:
     def test_non_sequence(self):
         for f in (self.module.bisect_left, self.module.bisect_right,
@@ -338,6 +343,12 @@ class TestErrorHandling:
 
     def test_cmp_err(self):
         seq = [CmpErr(), CmpErr(), CmpErr()]
+        for f in (self.module.bisect_left, self.module.bisect_right,
+                  self.module.insort_left, self.module.insort_right):
+            self.assertRaises(ZeroDivisionError, f, seq, 10)
+
+    def test_cmp_err_py2x(self):
+        seq = [CmpErrPy2x(), CmpErrPy2x(), CmpErrPy2x()]
         for f in (self.module.bisect_left, self.module.bisect_right,
                   self.module.insort_left, self.module.insort_right):
             self.assertRaises(ZeroDivisionError, f, seq, 10)

@@ -2017,6 +2017,13 @@ set_vectorcall(PyObject *type, PyObject * const*args,
     return make_new_set(_PyType_CAST(type), NULL);
 }
 
+static int
+set_nocmp(PyObject *self, PyObject *other)
+{
+    PyErr_SetString(PyExc_TypeError, "cannot compare sets using cmp()");
+    return -1;
+}
+
 static PySequenceMethods set_as_sequence = {
     set_len,                            /* sq_length */
     0,                                  /* sq_concat */
@@ -2134,6 +2141,7 @@ PyTypeObject PySet_Type = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    set_nocmp,                          /* tp_compare */
     0,                                  /* tp_as_async */
     (reprfunc)set_repr,                 /* tp_repr */
     &set_as_number,                     /* tp_as_number */
@@ -2146,6 +2154,7 @@ PyTypeObject PySet_Type = {
     0,                                  /* tp_setattro */
     0,                                  /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
+        Py_TPFLAGS_CHECKTYPES |
         Py_TPFLAGS_BASETYPE |
         _Py_TPFLAGS_MATCH_SELF,       /* tp_flags */
     set_doc,                            /* tp_doc */
@@ -2217,6 +2226,7 @@ static PyNumberMethods frozenset_as_number = {
     (binaryfunc)set_and,                /*nb_and*/
     (binaryfunc)set_xor,                /*nb_xor*/
     (binaryfunc)set_or,                 /*nb_or*/
+    0,                                  /*nb_coerce*/
 };
 
 PyDoc_STRVAR(frozenset_doc,
@@ -2235,6 +2245,7 @@ PyTypeObject PyFrozenSet_Type = {
     0,                                  /* tp_vectorcall_offset */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
+    set_nocmp,                          /* tp_compare */
     0,                                  /* tp_as_async */
     (reprfunc)set_repr,                 /* tp_repr */
     &frozenset_as_number,               /* tp_as_number */
@@ -2247,6 +2258,7 @@ PyTypeObject PyFrozenSet_Type = {
     0,                                  /* tp_setattro */
     0,                                  /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
+        Py_TPFLAGS_CHECKTYPES |
         Py_TPFLAGS_BASETYPE |
         _Py_TPFLAGS_MATCH_SELF,       /* tp_flags */
     frozenset_doc,                      /* tp_doc */

@@ -3144,6 +3144,136 @@ PyDict_Items(PyObject *mp)
     return dict_items((PyDictObject *)mp);
 }
 
+/* Subroutine which returns the smallest key in a for which b's value
+   is different or absent.  The value is returned too, through the
+   pval argument.  Both are NULL if no key in a is found for which b's status
+   differs.  The refcounts on (and only on) non-NULL *pval and function return
+   values must be decremented by the caller (characterize() increments them
+   to ensure that mutating comparison and PyDict_GetItem calls can't delete
+   them before the caller is done looking at them). */
+
+static PyObject *
+characterize(PyDictObject *a, PyDictObject *b, PyObject **pval)
+{
+    PyObject *akey = NULL; /* smallest key in a s.t. a[akey] != b[akey] */
+    PyObject *aval = NULL; /* a[akey] */
+    Py_ssize_t i;
+    int cmp;
+
+    for (i = 0; i <= a->ma_mask; i++) {
+        PyObject *thiskey, *thisaval, *thisbval;
+        if (a->ma_table[i].me_value == NULL)
+            continue;
+        thiskey = a->ma_table[i].me_key;
+        Py_INCREF(thiskey);  /* keep alive across compares */
+        if (akey != NULL) {
+            cmp = PyObject_RichCompareBool(akey, thiskey, Py_LT);
+            if (cmp < 0) {
+                Py_DECREF(thiskey);
+                goto Fail;
+            }
+            if (cmp > 0 ||
+                i > a->ma_mask ||
+                a->ma_table[i].me_value == NULL)
+            {
+                /* Not the *smallest* a key; or maybe it is
+                 * but the compare shrunk the dict so we can't
+                 * find its associated value anymore; or
+                 * maybe it is but the compare deleted the
+                 * a[thiskey] entry.
+                 */
+                Py_DECREF(thiskey);
+                continue;
+            }
+        }
+
+        /* Compare a[thiskey] to b[thiskey]; cmp <- true iff equal. */
+        thisaval = a->ma_table[i].me_value;
+        assert(thisaval);
+        Py_INCREF(thisaval);   /* keep alive */
+        thisbval = PyDict_GetItem((PyObject *)b, thiskey);
+        if (thisbval == NULL)
+            cmp = 0;
+        else {
+            /* both dicts have thiskey:  same values? */
+            cmp = PyObject_RichCompareBool(
+                                    thisaval, thisbval, Py_EQ);
+            if (cmp < 0) {
+                Py_DECREF(thiskey);
+                Py_DECREF(thisaval);
+                goto Fail;
+            }
+        }
+        if (cmp == 0) {
+            /* New winner. */
+            Py_XDECREF(akey);
+            Py_XDECREF(aval);
+            akey = thiskey;
+            aval = thisaval;
+        }
+        else {
+            Py_DECREF(thiskey);
+            Py_DECREF(thisaval);
+        }
+    }
+    *pval = aval;
+    return akey;
+
+Fail:
+    Py_XDECREF(akey);
+    Py_XDECREF(aval);
+    *pval = NULL;
+    return NULL;
+}
+
+static int
+dict_compare(PyDictObject *a, PyDictObject *b)
+{
+    PyObject *adiff, *bdiff, *aval, *bval;
+    int res;
+
+    /* Compare lengths first */
+    if (a->ma_used < b->ma_used)
+        return -1;              /* a is shorter */
+    else if (a->ma_used > b->ma_used)
+        return 1;               /* b is shorter */
+
+    /* Same length -- check all keys */
+    bdiff = bval = NULL;
+    adiff = characterize(a, b, &aval);
+    if (adiff == NULL) {
+        assert(!aval);
+        /* Either an error, or a is a subset with the same length so
+         * must be equal.
+         */
+        res = PyErr_Occurred() ? -1 : 0;
+        goto Finished;
+    }
+    bdiff = characterize(b, a, &bval);
+    if (bdiff == NULL && PyErr_Occurred()) {
+        assert(!bval);
+        res = -1;
+        goto Finished;
+    }
+    res = 0;
+    if (bdiff) {
+        /* bdiff == NULL "should be" impossible now, but perhaps
+         * the last comparison done by the characterize() on a had
+         * the side effect of making the dicts equal!
+         */
+        res = PyObject_Compare(adiff, bdiff);
+    }
+    if (res == 0 && bval != NULL)
+        res = PyObject_Compare(aval, bval);
+
+Finished:
+    Py_XDECREF(adiff);
+    Py_XDECREF(bdiff);
+    Py_XDECREF(aval);
+    Py_XDECREF(bval);
+    return res;
+}
+
 /* Return 1 if dicts equal, 0 if not, -1 if error.
  * Gets out as soon as any difference is detected.
  * Uses only Py_EQ comparison.
@@ -3846,6 +3976,7 @@ PyTypeObject PyDict_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    (cmpfunc)dict_compare,                      /* tp_compare */
     0,                                          /* tp_as_async */
     (reprfunc)dict_repr,                        /* tp_repr */
     &dict_as_number,                            /* tp_as_number */
@@ -4117,6 +4248,7 @@ PyTypeObject PyDictIterKey_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     0,                                          /* tp_as_async */
     0,                                          /* tp_repr */
     0,                                          /* tp_as_number */
@@ -4217,6 +4349,7 @@ PyTypeObject PyDictIterValue_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     0,                                          /* tp_as_async */
     0,                                          /* tp_repr */
     0,                                          /* tp_as_number */
@@ -4343,6 +4476,7 @@ PyTypeObject PyDictIterItem_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     0,                                          /* tp_as_async */
     0,                                          /* tp_repr */
     0,                                          /* tp_as_number */
@@ -5110,7 +5244,8 @@ PyTypeObject PyDictKeys_Type = {
     PyObject_GenericGetAttr,                    /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,/* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
+        Py_TPFLAGS_CHECKTYPES,                  /* tp_flags */
     0,                                          /* tp_doc */
     (traverseproc)dictview_traverse,            /* tp_traverse */
     0,                                          /* tp_clear */
@@ -5216,7 +5351,8 @@ PyTypeObject PyDictItems_Type = {
     PyObject_GenericGetAttr,                    /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,/* tp_flags */
+     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
+        Py_TPFLAGS_CHECKTYPES,                  /* tp_flags */
     0,                                          /* tp_doc */
     (traverseproc)dictview_traverse,            /* tp_traverse */
     0,                                          /* tp_clear */

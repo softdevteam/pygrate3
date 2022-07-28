@@ -89,6 +89,7 @@ typeslots = [
     'tp_print',
     'tp_getattr',
     'tp_setattr',
+    'tp_compare',
     'tp_reserved',
     'tp_repr',
     'tp_as_number',

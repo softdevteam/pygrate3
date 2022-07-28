@@ -835,6 +835,7 @@ PyTypeObject PyIOBase_Type = {
     0,                          /*tp_vectorcall_offset*/
     0,                          /*tp_getattr*/
     0,                          /*tp_setattr*/
+    0,                          /* tp_compare*/
     0,                          /*tp_as_async*/
     0,                          /*tp_repr*/
     0,                          /*tp_as_number*/
@@ -1029,6 +1030,7 @@ PyTypeObject PyRawIOBase_Type = {
     0,                          /*tp_vectorcall_offset*/
     0,                          /*tp_getattr*/
     0,                          /*tp_setattr*/
+    0,                          /* tp_compare*/
     0,                          /*tp_as_async*/
     0,                          /*tp_repr*/
     0,                          /*tp_as_number*/

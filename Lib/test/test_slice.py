@@ -116,6 +116,36 @@ class SliceTest(unittest.TestCase):
         self.assertEqual(s1, s1)
         self.assertRaises(Exc, lambda: s1 == s2)
 
+    def test_cmp_py2x(self):
+        s1 = slice(1, 2, 3)
+        s2 = slice(1, 2, 3)
+        s3 = slice(1, 2, 4)
+        self.assertEqual(s1, s2)
+        self.assertNotEqual(s1, s3)
+
+        class Exc(Exception):
+            pass
+
+        class BadCmp(object):
+            def __eq__(self, other):
+                raise Exc
+            __hash__ = None # Silence Py2x warning
+
+        s1 = slice(BadCmp())
+        s2 = slice(BadCmp())
+        self.assertRaises(Exc, cmp, s1, s2)
+        self.assertEqual(s1, s1)
+
+        s1 = slice(1, BadCmp())
+        s2 = slice(1, BadCmp())
+        self.assertEqual(s1, s1)
+        self.assertRaises(Exc, cmp, s1, s2)
+
+        s1 = slice(1, 2, BadCmp())
+        s2 = slice(1, 2, BadCmp())
+        self.assertEqual(s1, s1)
+        self.assertRaises(Exc, cmp, s1, s2)
+
     def test_members(self):
         s = slice(1)
         self.assertEqual(s.start, None)

@@ -1045,4 +1045,33 @@ builtin_issubclass(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 exit:
     return return_value;
 }
+
+PyDoc_STRVAR(builtin_cmp__doc__,
+"cmp(x, y) -> integer\n\
+\n\
+Return negative if x<y, zero if x==y, positive if x>y.");
+
+#define BUILTIN_CMP_METHODDEF    \
+    {"cmp", _PyCFunction_CAST(builtin_cmp), METH_FASTCALL, builtin_cmp__doc__},
+
+static PyObject *
+builtin_cmp_impl(PyObject *module, PyObject *a, PyObject *b);
+
+static PyObject *
+builtin_cmp(PyObject *module, PyObject *args, Py_ssize_t nargs)
+{
+    PyObject *return_value = NULL;
+    PyObject a;
+    PyObject b;
+
+    if (!_PyArg_CheckPositional("cmp", nargs, 2, 2)) {
+        goto exit;
+    }
+    a = args[0];
+    b = args[1];
+    return_value = builtin_cmp_impl(module, &a, &b);
+
+exit:
+    return return_value;
+}
 /*[clinic end generated code: output=a2c5c53e8aead7c3 input=a9049054013a1b77]*/
