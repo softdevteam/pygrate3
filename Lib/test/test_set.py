@@ -1153,6 +1153,11 @@ class TestBinaryOps(unittest.TestCase):
         result = self.set ^ set([8])
         self.assertEqual(result, set([2, 4, 6, 8]))
 
+    def test_cmp(self):
+        a, b = set('a'), set('b')
+        self.assertRaises(TypeError, cmp, a, b)
+        self.assertEqual(cmp(a, a), 0)
+
 #==============================================================================
 
 class TestUpdateOps(unittest.TestCase):

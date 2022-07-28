@@ -914,6 +914,21 @@ class TestCmpToKey:
         with self.assertRaises(ZeroDivisionError):
             key(3) > key(1)
 
+    def test_bad_cmp_py2x(self):
+        def cmp1(x, y):
+            raise ZeroDivisionError
+        key = self.cmp_to_key(cmp1)
+        with self.assertRaises(ZeroDivisionError):
+            key(3) > key(1)
+
+        class BadCmp:
+            def __cmp__(self, other):
+                raise ZeroDivisionError
+        def cmp1(x, y):
+            return BadCmp()
+        with self.assertRaises(ZeroDivisionError):
+            key(3) > key(1)
+
     def test_obj_field(self):
         def cmp1(x, y):
             return (x > y) - (x < y)
