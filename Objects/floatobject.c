@@ -1662,6 +1662,32 @@ float_new_impl(PyTypeObject *type, PyObject *x)
     return PyNumber_Float(x);
 }
 
+static int
+float_coerce(PyObject **pv, PyObject **pw)
+{
+    if (PyLong_Check(*pw)) {
+        long x = PyLong_AsLong(*pw);
+        *pw = PyFloat_FromDouble((double)x);
+        Py_INCREF(*pv);
+        return 0;
+    }
+    else if (PyLong_Check(*pw)) {
+        double x = PyLong_AsDouble(*pw);
+        if (x == -1.0 && PyErr_Occurred())
+            return -1;
+        *pw = PyFloat_FromDouble(x);
+        Py_INCREF(*pv);
+        return 0;
+    }
+    else if (PyFloat_Check(*pw)) {
+        Py_INCREF(*pv);
+        Py_INCREF(*pw);
+        return 0;
+    }
+    return 1; /* Can't do it */
+}
+
+
 /* Wimpy, slow approach to tp_new calls for subtypes of float:
    first create a regular float from whatever arguments we got,
    then allocate a subtype instance and initialize its ob_fval
@@ -1853,6 +1879,7 @@ static PyNumberMethods float_as_number = {
     float_pow,          /* nb_power */
     (unaryfunc)float_neg, /* nb_negative */
     float_float,        /* nb_positive */
+    float_coerce,       /*nb_coerce*/
     (unaryfunc)float_abs, /* nb_absolute */
     (inquiry)float_bool, /* nb_bool */
     0,                  /* nb_invert */
@@ -1889,6 +1916,7 @@ PyTypeObject PyFloat_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     0,                                          /* tp_as_async */
     (reprfunc)float_repr,                       /* tp_repr */
     &float_as_number,                           /* tp_as_number */
@@ -1900,8 +1928,8 @@ PyTypeObject PyFloat_Type = {
     PyObject_GenericGetAttr,                    /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
-        _Py_TPFLAGS_MATCH_SELF,               /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
+    Py_TPFLAGS_BASETYPE | _Py_TPFLAGS_MATCH_SELF, /* tp_flags */
     float_new__doc__,                           /* tp_doc */
     0,                                          /* tp_traverse */
     0,                                          /* tp_clear */

@@ -623,6 +623,321 @@ done:
     return result;
 }
 
+/* Helper to warn about deprecated tp_compare return values.  Return:
+   -2 for an exception;
+   -1 if v <  w;
+    0 if v == w;
+    1 if v  > w.
+   (This function cannot return 2.)
+*/
+static int
+adjust_tp_compare(int c)
+{
+    if (PyErr_Occurred()) {
+        if (c != -1 && c != -2) {
+            PyObject *t, *v, *tb;
+            PyErr_Fetch(&t, &v, &tb);
+            if (PyErr_Warn(PyExc_RuntimeWarning,
+                           "tp_compare didn't return -1 or -2 "
+                           "for exception") < 0) {
+                Py_XDECREF(t);
+                Py_XDECREF(v);
+                Py_XDECREF(tb);
+            }
+            else
+                PyErr_Restore(t, v, tb);
+        }
+        return -2;
+    }
+    else if (c < -1 || c > 1) {
+        if (PyErr_Warn(PyExc_RuntimeWarning,
+                       "tp_compare didn't return -1, 0 or 1") < 0)
+            return -2;
+        else
+            return c < -1 ? -1 : 1;
+    }
+    else {
+        assert(c >= -1 && c <= 1);
+        return c;
+    }
+}
+
+/* Macro to get the tp_richcompare field of a type if defined */
+#define RICHCOMPARE(t) (PyType_HasFeature((t), Py_TPFLAGS_HAVE_RICHCOMPARE) \
+             ? (t)->tp_richcompare : NULL)
+
+/* Try a genuine rich comparison, returning an object.  Return:
+   NULL for exception;
+   NotImplemented if this particular rich comparison is not implemented or
+     undefined;
+   some object not equal to NotImplemented if it is implemented
+     (this latter object may not be a Boolean).
+*/
+static PyObject *
+try_rich_compare(PyObject *v, PyObject *w, int op)
+{
+    richcmpfunc f;
+    PyObject *res;
+
+    if (v->ob_type != w->ob_type &&
+        PyType_IsSubtype(w->ob_type, v->ob_type) &&
+        (f = RICHCOMPARE(w->ob_type)) != NULL) {
+        res = (*f)(w, v, _Py_SwappedOp[op]);
+        if (res != Py_NotImplemented)
+            return res;
+        Py_DECREF(res);
+    }
+    if ((f = RICHCOMPARE(v->ob_type)) != NULL) {
+        res = (*f)(v, w, op);
+        if (res != Py_NotImplemented)
+            return res;
+        Py_DECREF(res);
+    }
+    if ((f = RICHCOMPARE(w->ob_type)) != NULL) {
+        return (*f)(w, v, _Py_SwappedOp[op]);
+    }
+    res = Py_NotImplemented;
+    Py_INCREF(res);
+    return res;
+}
+
+/* Try a genuine rich comparison, returning an int.  Return:
+   -1 for exception (including the case where try_rich_compare() returns an
+      object that's not a Boolean);
+    0 if the outcome is false;
+    1 if the outcome is true;
+    2 if this particular rich comparison is not implemented or undefined.
+*/
+static int
+try_rich_compare_bool(PyObject *v, PyObject *w, int op)
+{
+    PyObject *res;
+    int ok;
+
+    if (RICHCOMPARE(v->ob_type) == NULL && RICHCOMPARE(w->ob_type) == NULL)
+        return 2; /* Shortcut, avoid INCREF+DECREF */
+    res = try_rich_compare(v, w, op);
+    if (res == NULL)
+        return -1;
+    if (res == Py_NotImplemented) {
+        Py_DECREF(res);
+        return 2;
+    }
+    ok = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    return ok;
+}
+
+/* Try rich comparisons to determine a 3-way comparison.  Return:
+   -2 for an exception;
+   -1 if v  < w;
+    0 if v == w;
+    1 if v  > w;
+    2 if this particular rich comparison is not implemented or undefined.
+*/
+static int
+try_rich_to_3way_compare(PyObject *v, PyObject *w)
+{
+    static struct { int op; int outcome; } tries[3] = {
+        /* Try this operator, and if it is true, use this outcome: */
+        {Py_EQ, 0},
+        {Py_LT, -1},
+        {Py_GT, 1},
+    };
+    int i;
+
+    if (RICHCOMPARE(v->ob_type) == NULL && RICHCOMPARE(w->ob_type) == NULL)
+        return 2; /* Shortcut */
+
+    for (i = 0; i < 3; i++) {
+        switch (try_rich_compare_bool(v, w, tries[i].op)) {
+        case -1:
+            return -2;
+        case 1:
+            return tries[i].outcome;
+        }
+    }
+
+    return 2;
+}
+
+/* Try a 3-way comparison, returning an int.  Return:
+   -2 for an exception;
+   -1 if v <  w;
+    0 if v == w;
+    1 if v  > w;
+    2 if this particular 3-way comparison is not implemented or undefined.
+*/
+static int
+try_3way_compare(PyObject *v, PyObject *w)
+{
+    int c;
+    cmpfunc f;
+
+    /* Comparisons involving instances are given to instance_compare,
+       which has the same return conventions as this function. */
+
+    f = v->ob_type->tp_compare;
+    if (PyInstanceMethod_Check(v))
+        return (*f)(v, w);
+    if (PyInstanceMethod_Check(w))
+        return (*w->ob_type->tp_compare)(v, w);
+
+    /* If both have the same (non-NULL) tp_compare, use it. */
+    if (f != NULL && f == w->ob_type->tp_compare) {
+        c = (*f)(v, w);
+        return adjust_tp_compare(c);
+    }
+
+    /* If either tp_compare is _PyObject_SlotCompare, that's safe. */
+    if (f == _PyObject_SlotCompare ||
+        w->ob_type->tp_compare == _PyObject_SlotCompare)
+        return _PyObject_SlotCompare(v, w);
+
+    /* If we're here, v and w,
+        a) are not instances;
+        b) have different types or a type without tp_compare; and
+        c) don't have a user-defined tp_compare.
+       tp_compare implementations in C assume that both arguments
+       have their type, so we give up if the coercion fails or if
+       it yields types which are still incompatible (which can
+       happen with a user-defined nb_coerce).
+    */
+    c = PyNumber_CoerceEx(&v, &w);
+    if (c < 0)
+        return -2;
+    if (c > 0)
+        return 2;
+    f = v->ob_type->tp_compare;
+    if (f != NULL && f == w->ob_type->tp_compare) {
+        c = (*f)(v, w);
+        Py_DECREF(v);
+        Py_DECREF(w);
+        return adjust_tp_compare(c);
+    }
+
+    /* No comparison defined */
+    Py_DECREF(v);
+    Py_DECREF(w);
+    return 2;
+}
+
+/* Final fallback 3-way comparison, returning an int.  Return:
+   -2 if an error occurred;
+   -1 if v <  w;
+    0 if v == w;
+    1 if v >  w.
+*/
+static int
+default_3way_compare(PyObject *v, PyObject *w)
+{
+    int c;
+    const char *vname, *wname;
+
+    if (v->ob_type == w->ob_type) {
+        /* When comparing these pointers, they must be cast to
+         * integer types (i.e. Py_uintptr_t, our spelling of C9X's
+         * uintptr_t).  ANSI specifies that pointer compares other
+         * than == and != to non-related structures are undefined.
+         */
+        Py_uintptr_t vv = (Py_uintptr_t)v;
+        Py_uintptr_t ww = (Py_uintptr_t)w;
+        return (vv < ww) ? -1 : (vv > ww) ? 1 : 0;
+    }
+
+    /* None is smaller than anything */
+    if (v == Py_None)
+        return -1;
+    if (w == Py_None)
+        return 1;
+
+    /* different type: compare type names; numbers are smaller */
+    if (PyNumber_Check(v))
+        vname = "";
+    else
+        vname = v->ob_type->tp_name;
+    if (PyNumber_Check(w))
+        wname = "";
+    else
+        wname = w->ob_type->tp_name;
+    c = strcmp(vname, wname);
+    if (c < 0)
+        return -1;
+    if (c > 0)
+        return 1;
+    /* Same type name, or (more likely) incomparable numeric types */
+    return ((Py_uintptr_t)(v->ob_type) < (
+        Py_uintptr_t)(w->ob_type)) ? -1 : 1;
+}
+
+/* Do a 3-way comparison, by hook or by crook.  Return:
+   -2 for an exception (but see below);
+   -1 if v <  w;
+    0 if v == w;
+    1 if v >  w;
+   BUT: if the object implements a tp_compare function, it returns
+   whatever this function returns (whether with an exception or not).
+*/
+static int
+do_cmp(PyObject *v, PyObject *w)
+{
+    int c;
+    cmpfunc f;
+
+    if (v->ob_type == w->ob_type
+        && (f = v->ob_type->tp_compare) != NULL) {
+        c = (*f)(v, w);
+        if (PyInstanceMethod_Check(v)) {
+            /* Instance tp_compare has a different signature.
+               But if it returns undefined we fall through. */
+            if (c != 2)
+                return c;
+            /* Else fall through to try_rich_to_3way_compare() */
+        }
+        else
+            return adjust_tp_compare(c);
+    }
+    /* We only get here if one of the following is true:
+       a) v and w have different types
+       b) v and w have the same type, which doesn't have tp_compare
+       c) v and w are instances, and either __cmp__ is not defined or
+          __cmp__ returns NotImplemented
+    */
+    c = try_rich_to_3way_compare(v, w);
+    if (c < 2)
+        return c;
+    c = try_3way_compare(v, w);
+    if (c < 2)
+        return c;
+    return default_3way_compare(v, w);
+}
+
+/* For compatibility
+  Compare v to w.  Return
+   -1 if v <  w or exception (PyErr_Occurred() true in latter case).
+    0 if v == w.
+    1 if v > w.
+   XXX The docs (C API manual) say the return value is undefined in case
+   XXX of error.
+*/
+int
+PyObject_Compare(PyObject *v, PyObject *w)
+{
+    int result;
+
+    if (v == NULL || w == NULL) {
+        PyErr_BadInternalCall();
+        return -1;
+    }
+    if (v == w)
+        return 0;
+    if (Py_EnterRecursiveCall(" in cmp"))
+        return -1;
+    result = do_cmp(v, w);
+    Py_LeaveRecursiveCall();
+    return result < 0 ? -1 : result;
+}
+
 /* For Python 3.0.1 and later, the old three-way comparison has been
    completely removed in favour of rich comparisons.  PyObject_Compare() and
    PyObject_Cmp() are gone, and the builtin cmp function no longer exists.
@@ -1091,7 +1406,7 @@ _PyObject_DictPointer(PyObject *obj)
 PyObject **
 _PyObject_GetDictPtr(PyObject *obj)
 {
-    if ((Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MANAGED_DICT) == 0) {
+    if ((Py_TYPE(obj)->tp_flags & Py_TPFLAGS_MANAGED_DICT & Py_TPFLAGS_HAVE_CLASS) == 0) {
         return _PyObject_DictPointer(obj);
     }
     PyObject **dict_ptr = _PyObject_ManagedDictPointer(obj);
@@ -1267,7 +1582,7 @@ _PyObject_GenericGetAttrWithDict(PyObject *obj, PyObject *name,
     descr = _PyType_Lookup(tp, name);
 
     f = NULL;
-    if (descr != NULL) {
+    if (descr != NULL && PyType_HasFeature(descr->ob_type, Py_TPFLAGS_HAVE_CLASS)) {
         Py_INCREF(descr);
         f = Py_TYPE(descr)->tp_descr_get;
         if (f != NULL && PyDescr_IsData(descr)) {
@@ -1385,7 +1700,8 @@ _PyObject_GenericSetAttrWithDict(PyObject *obj, PyObject *name,
     Py_INCREF(tp);
     descr = _PyType_Lookup(tp, name);
 
-    if (descr != NULL) {
+    if (descr != NULL &&
+        PyType_HasFeature(descr->ob_type, Py_TPFLAGS_HAVE_CLASS)) {
         Py_INCREF(descr);
         f = Py_TYPE(descr)->tp_descr_set;
         if (f != NULL) {
@@ -1523,6 +1839,41 @@ PyObject_Not(PyObject *v)
     if (res < 0)
         return res;
     return res == 0;
+}
+
+/* Coerce two numeric types to the "larger" one.
+   Increment the reference count on each argument.
+   Return value:
+   -1 if an error occurred;
+   0 if the coercion succeeded (and then the reference counts are increased);
+   1 if no coercion is possible (and no error is raised).
+*/
+int
+PyNumber_CoerceEx(PyObject **pv, PyObject **pw)
+{
+    register PyObject *v = *pv;
+    register PyObject *w = *pw;
+    int res;
+
+    /* Shortcut only for old-style types */
+    if (v->ob_type == w->ob_type &&
+        !_PyType_HasFeature(v->ob_type, Py_TPFLAGS_CHECKTYPES))
+    {
+        Py_INCREF(v);
+        Py_INCREF(w);
+        return 0;
+    }
+    if (v->ob_type->tp_as_number && v->ob_type->tp_as_number->nb_coerce) {
+        res = (*v->ob_type->tp_as_number->nb_coerce)(pv, pw);
+        if (res <= 0)
+            return res;
+    }
+    if (w->ob_type->tp_as_number && w->ob_type->tp_as_number->nb_coerce) {
+        res = (*w->ob_type->tp_as_number->nb_coerce)(pw, pv);
+        if (res <= 0)
+            return res;
+    }
+    return 1;
 }
 
 /* Test whether an object can be called */
@@ -1686,6 +2037,7 @@ PyTypeObject _PyNone_Type = {
     0,                  /*tp_vectorcall_offset*/
     0,                  /*tp_getattr*/
     0,                  /*tp_setattr*/
+    0,                  /* tp_compare*/
     0,                  /*tp_as_async*/
     none_repr,          /*tp_repr*/
     &none_as_number,    /*tp_as_number*/
@@ -1787,6 +2139,7 @@ PyTypeObject _PyNotImplemented_Type = {
     0,                  /*tp_vectorcall_offset*/
     0,                  /*tp_getattr*/
     0,                  /*tp_setattr*/
+    0,                  /* tp_compare*/
     0,                  /*tp_as_async*/
     NotImplemented_repr,        /*tp_repr*/
     &notimplemented_as_number,  /*tp_as_number*/

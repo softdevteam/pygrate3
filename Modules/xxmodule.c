@@ -109,6 +109,7 @@ static PyTypeObject Xxo_Type = {
     0,                          /*tp_vectorcall_offset*/
     (getattrfunc)0,             /*tp_getattr*/
     (setattrfunc)Xxo_setattr,   /*tp_setattr*/
+    0,                          /* tp_compare*/
     0,                          /*tp_as_async*/
     0,                          /*tp_repr*/
     0,                          /*tp_as_number*/
@@ -227,6 +228,7 @@ static PyTypeObject Str_Type = {
     0,                          /*tp_vectorcall_offset*/
     0,                          /*tp_getattr*/
     0,                          /*tp_setattr*/
+    0,                          /* tp_compare*/
     0,                          /*tp_as_async*/
     0,                          /*tp_repr*/
     0,                          /*tp_as_number*/
@@ -282,6 +284,7 @@ static PyTypeObject Null_Type = {
     0,                          /*tp_vectorcall_offset*/
     0,                          /*tp_getattr*/
     0,                          /*tp_setattr*/
+    0,                          /* tp_compare*/
     0,                          /*tp_as_async*/
     0,                          /*tp_repr*/
     0,                          /*tp_as_number*/

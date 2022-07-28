@@ -165,6 +165,14 @@ class TestBugs(unittest.TestCase):
             self.assertRaises(ValueError, L.sort, key=cmp_to_key(mutating_cmp))
             memorywaster = [memorywaster]
 
+    def test_cmpNone(self):
+        # Testing None as a comparison function.
+
+        L = range(50)
+        random.shuffle(L)
+        L.sort(None)
+        self.assertEqual(L, range(50))
+
 #==============================================================================
 
 class TestDecorateSortUndecorate(unittest.TestCase):
@@ -189,6 +197,15 @@ class TestDecorateSortUndecorate(unittest.TestCase):
         data.sort(key=lambda t: t[0])   # sort on the random first field
         copy.sort()                     # sort using both fields
         self.assertEqual(data, copy)    # should get the same result
+
+    def test_cmp_and_key_combination(self):
+        # Verify that the wrapper has been removed
+        def compare(x, y):
+            self.assertEqual(type(x), str)
+            self.assertEqual(type(x), str)
+            return cmp(x, y)
+        data = 'The quick Brown fox Jumped over The lazy Dog'.split()
+        data.sort(cmp=compare, key=str.lower)
 
     def test_key_with_exception(self):
         # Verify that the wrapper has been removed

@@ -200,6 +200,7 @@ typedef PyObject * (*binaryfunc)(PyObject *, PyObject *);
 typedef PyObject * (*ternaryfunc)(PyObject *, PyObject *, PyObject *);
 typedef int (*inquiry)(PyObject *);
 typedef Py_ssize_t (*lenfunc)(PyObject *);
+typedef int (*coercion)(PyObject **, PyObject **);
 typedef PyObject *(*ssizeargfunc)(PyObject *, Py_ssize_t);
 typedef PyObject *(*ssizessizeargfunc)(PyObject *, Py_ssize_t, Py_ssize_t);
 typedef int(*ssizeobjargproc)(PyObject *, Py_ssize_t, PyObject *);
@@ -286,6 +287,7 @@ PyAPI_FUNC(PyObject *) PyObject_Repr(PyObject *);
 PyAPI_FUNC(PyObject *) PyObject_Str(PyObject *);
 PyAPI_FUNC(PyObject *) PyObject_ASCII(PyObject *);
 PyAPI_FUNC(PyObject *) PyObject_Bytes(PyObject *);
+PyAPI_FUNC(int) PyObject_Compare(PyObject *, PyObject *);
 PyAPI_FUNC(PyObject *) PyObject_RichCompare(PyObject *, PyObject *, int);
 PyAPI_FUNC(int) PyObject_RichCompareBool(PyObject *, PyObject *, int);
 PyAPI_FUNC(PyObject *) PyObject_GetAttrString(PyObject *, const char *);
@@ -306,6 +308,10 @@ PyAPI_FUNC(int) PyObject_IsTrue(PyObject *);
 PyAPI_FUNC(int) PyObject_Not(PyObject *);
 PyAPI_FUNC(int) PyCallable_Check(PyObject *);
 PyAPI_FUNC(void) PyObject_ClearWeakRefs(PyObject *);
+
+PyAPI_FUNC(int) PyNumber_CoerceEx(PyObject **, PyObject **);
+/* A slot function whose address we need to compare */
+extern int _PyObject_SlotCompare(PyObject *, PyObject *);
 
 /* PyObject_Dir(obj) acts like Python builtins.dir(obj), returning a
    list of strings.  PyObject_Dir(NULL) is like builtins.dir(),
@@ -368,6 +374,15 @@ given type object has a specified feature.
 /* Set if the type object is immutable: type attributes cannot be set nor deleted */
 #define Py_TPFLAGS_IMMUTABLETYPE (1UL << 8)
 
+/* PyNumberMethods do their own coercion */
+#define Py_TPFLAGS_CHECKTYPES (1L<<4)
+
+/* tp_iter is defined */
+#define Py_TPFLAGS_HAVE_ITER (1L<<7)
+
+/* tp_richcompare is defined */
+#define Py_TPFLAGS_HAVE_RICHCOMPARE (1L<<5)
+
 /* Set if the type object is dynamically allocated */
 #define Py_TPFLAGS_HEAPTYPE (1UL << 9)
 
@@ -380,6 +395,9 @@ given type object has a specified feature.
 // Backwards compatibility alias for API that was provisional in Python 3.8
 #define _Py_TPFLAGS_HAVE_VECTORCALL Py_TPFLAGS_HAVE_VECTORCALL
 #endif
+
+/* tp_richcompare is defined */
+#define Py_TPFLAGS_HAVE_RICHCOMPARE (1L<<5)
 
 /* Set if the type is 'ready' -- fully initialized */
 #define Py_TPFLAGS_READY (1UL << 12)
@@ -397,6 +415,9 @@ given type object has a specified feature.
 #define Py_TPFLAGS_HAVE_STACKLESS_EXTENSION 0
 #endif
 
+/* Objects support nb_index in PyNumberMethods */
+#define Py_TPFLAGS_HAVE_INDEX (1L<<17)
+
 /* Objects behave like an unbound method */
 #define Py_TPFLAGS_METHOD_DESCRIPTOR (1UL << 17)
 
@@ -405,6 +426,9 @@ given type object has a specified feature.
 
 /* Type is abstract and cannot be instantiated */
 #define Py_TPFLAGS_IS_ABSTRACT (1UL << 20)
+
+/* New members introduced by Python 2.2 exist */
+#define Py_TPFLAGS_HAVE_CLASS (1L<<8)
 
 // This undocumented flag gives certain built-ins their unique pattern-matching
 // behavior, which allows a single positional subpattern to match against the
@@ -423,6 +447,9 @@ given type object has a specified feature.
 
 #define Py_TPFLAGS_DEFAULT  ( \
                  Py_TPFLAGS_HAVE_STACKLESS_EXTENSION | \
+                 Py_TPFLAGS_HAVE_INDEX | \
+                 Py_TPFLAGS_HAVE_ITER | \
+                 Py_TPFLAGS_HAVE_CLASS | \
                 0)
 
 /* NOTE: Some of the following flags reuse lower bits (removed as part of the

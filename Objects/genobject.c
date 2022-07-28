@@ -848,6 +848,7 @@ PyTypeObject PyGen_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     &gen_as_async,                              /* tp_as_async */
     (reprfunc)gen_repr,                         /* tp_repr */
     0,                                          /* tp_as_number */
@@ -1195,6 +1196,7 @@ PyTypeObject PyCoro_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     &coro_as_async,                             /* tp_as_async */
     (reprfunc)coro_repr,                        /* tp_repr */
     0,                                          /* tp_as_number */
@@ -1586,6 +1588,7 @@ PyTypeObject PyAsyncGen_Type = {
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
+    0,                                          /* tp_compare */
     &async_gen_as_async,                        /* tp_as_async */
     (reprfunc)async_gen_repr,                   /* tp_repr */
     0,                                          /* tp_as_number */

@@ -104,6 +104,15 @@ class XMLRPCTestCase(unittest.TestCase):
         self.assertIs(type(newdt), xmlrpclib.DateTime)
         self.assertIsNone(m)
 
+    def test_cmp_datetime_DateTime(self):
+        now = datetime.datetime.now()
+        dt = xmlrpclib.DateTime(now.timetuple())
+        self.assertTrue(dt == now)
+        self.assertTrue(now == dt)
+        then = now + datetime.timedelta(seconds=4)
+        self.assertTrue(then >= dt)
+        self.assertTrue(dt < then)
+
     def test_bug_1164912 (self):
         d = xmlrpclib.DateTime()
         ((new_d,), dummy) = xmlrpclib.loads(xmlrpclib.dumps((d,),

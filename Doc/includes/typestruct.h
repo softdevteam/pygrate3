@@ -12,6 +12,7 @@ typedef struct _typeobject {
     PyAsyncMethods *tp_as_async; /* formerly known as tp_compare (Python 2)
                                     or tp_reserved (Python 3) */
     reprfunc tp_repr;
+    cmpfunc tp_compare;
 
     /* Method suites for standard classes */
 
