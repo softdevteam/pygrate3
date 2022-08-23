@@ -429,6 +429,51 @@ size of an internal pointer is equal::
     }
 
 
+
+Object Comparison
+-----------------
+
+::
+
+   cmpfunc tp_compare;
+
+The :c:member:`~PyTypeObject.tp_compare` handler is called when comparisons are needed and the
+object does not implement the specific rich comparison method which matches the
+requested comparison.  (It is always used if defined and the
+:c:func:`PyObject_Compare` or :c:func:`PyObject_Cmp` functions are used, or if
+:func:`cmp` is used from Python.) It is analogous to the :meth:`__cmp__` method.
+This function should return ``-1`` if *obj1* is less than *obj2*, ``0`` if they
+are equal, and ``1`` if *obj1* is greater than *obj2*. (It was previously
+allowed to return arbitrary negative or positive integers for less than and
+greater than, respectively; as of Python 2.2, this is no longer allowed.  In the
+future, other return values may be assigned a different meaning.)
+
+A :c:member:`~PyTypeObject.tp_compare` handler may raise an exception.  In this case it should
+return a negative value.  The caller has to test for the exception using
+:c:func:`PyErr_Occurred`.
+
+Here is a sample implementation::
+
+   static int
+   newdatatype_compare(newdatatypeobject * obj1, newdatatypeobject * obj2)
+   {
+       long result;
+
+       if (obj1->obj_UnderlyingDatatypePtr->size <
+           obj2->obj_UnderlyingDatatypePtr->size) {
+           result = -1;
+       }
+       else if (obj1->obj_UnderlyingDatatypePtr->size >
+                obj2->obj_UnderlyingDatatypePtr->size) {
+           result = 1;
+       }
+       else {
+           result = 0;
+       }
+       return result;
+   }
+
+   
 Abstract Protocol Support
 -------------------------
 

@@ -1618,6 +1618,15 @@ PyObject_CallObject:PyObject*::+1:
 PyObject_CallObject:PyObject*:callable_object:0:
 PyObject_CallObject:PyObject*:args:0:
 
+PyObject_Cmp:int:::
+PyObject_Cmp:PyObject*:o1:0:
+PyObject_Cmp:PyObject*:o2:0:
+PyObject_Cmp:int*:result::
+
+PyObject_Compare:int:::
+PyObject_Compare:PyObject*:o1:0:
+PyObject_Compare:PyObject*:o2:0:
+
 PyObject_CheckBuffer:int:::
 PyObject_CheckBuffer:PyObject*:obj:0:
 

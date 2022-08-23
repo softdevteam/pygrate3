@@ -321,7 +321,13 @@ class BuiltinTest(unittest.TestCase):
         self.assertRaises((OverflowError, ValueError), chr, 2**32)
 
     def test_cmp(self):
-        self.assertTrue(not hasattr(builtins, "cmp"))
+        self.assertEqual(cmp(-1, 1), -1)
+        self.assertEqual(cmp(1, -1), 1)
+        self.assertEqual(cmp(1, 1), 0)
+        # verify that circular objects are not handled
+        a = []; a.append(a)
+        b = []; b.append(b)
+        c = []; c.append(c)
 
     def test_compile(self):
         compile('print(1)\n', '', 'exec')

@@ -732,6 +732,42 @@ PyObject_RichCompare(PyObject *v, PyObject *w, int op)
     return res;
 }
 
+/* Compare v to w.  Return
+   -1 if v <  w or exception (PyErr_Occurred() true in latter case).
+    0 if v == w.
+    1 if v > w.
+   XXX The docs (C API manual) say the return value is undefined in case
+   XXX of error.
+*/
+int
+PyObject_Compare(PyObject *v, PyObject *w)
+{
+    int result;
+
+    if (Py_Py2xWarningFlag &&
+        PyErr_WarnEx_WithFix(PyExc_Py2xWarning, "the cmp method is not supported in 3.x",
+        "you can either provide your own alternative or use a third party library with a "
+         "backwards compatible fix", 1) < 0) {
+        return 0;
+    }
+
+    if (v == NULL || w == NULL) {
+        PyErr_BadInternalCall();
+        return -1;
+    }
+    if (v < w)
+        result = -1;
+    if (v == w)
+        result = 0;
+    if (v > w)
+        result = 1;
+    if (Py_EnterRecursiveCall(" in cmp"))
+        return -1;
+    // result = do_cmp(v, w);
+    Py_LeaveRecursiveCall();
+    return result;
+}
+
 /* Perform a rich comparison with integer result.  This wraps
    PyObject_RichCompare(), returning -1 for error, 0 for false, 1 for true. */
 int

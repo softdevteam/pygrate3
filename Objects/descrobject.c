@@ -1197,6 +1197,12 @@ mappingproxy_traverse(PyObject *self, visitproc visit, void *arg)
     return 0;
 }
 
+static int
+mappingproxy_compare(mappingproxyobject *v, PyObject *w)
+{
+    return PyObject_Compare(v->mapping, w);
+}
+
 static PyObject *
 mappingproxy_richcompare(mappingproxyobject *v, PyObject *w, int op)
 {

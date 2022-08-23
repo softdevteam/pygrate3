@@ -2959,6 +2959,7 @@ static PyMethodDef builtin_methods[] = {
     {"breakpoint", _PyCFunction_CAST(builtin_breakpoint), METH_FASTCALL | METH_KEYWORDS, breakpoint_doc},
     BUILTIN_CALLABLE_METHODDEF
     BUILTIN_CHR_METHODDEF
+    {"cmp",             builtin_cmp,        METH_VARARGS, cmp_doc},
     BUILTIN_COMPILE_METHODDEF
     BUILTIN_DELATTR_METHODDEF
     {"dir", builtin_dir, METH_VARARGS, dir_doc},

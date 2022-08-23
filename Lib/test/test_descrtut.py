@@ -171,6 +171,7 @@ You can get the information from the list type:
     ['__add__',
      '__class__',
      '__class_getitem__',
+     '__cmp__',
      '__contains__',
      '__delattr__',
      '__delitem__',

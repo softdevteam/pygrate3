@@ -100,6 +100,8 @@ extern "C" {
    statement: del o.attr_name. */
 #define  PyObject_DelAttr(O,A) PyObject_SetAttr((O),(A), NULL)
 
+   PyAPI_FUNC(int) PyObject_Cmp(PyObject *o1, PyObject *o2, int *result);
+
 
 /* Implemented elsewhere:
 

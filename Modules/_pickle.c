@@ -1939,6 +1939,9 @@ whichmodule(PyObject *global, PyObject *dotted_path)
     if (PyDict_CheckExact(modules)) {
         i = 0;
         while (PyDict_Next(modules, &i, &module_name, &module)) {
+
+            if (PyObject_Compare(module_name, (PyObject *)"")==0) continue;
+            
             if (_checkmodule(module_name, module, global, dotted_path) == 0) {
                 Py_INCREF(module_name);
                 return module_name;
