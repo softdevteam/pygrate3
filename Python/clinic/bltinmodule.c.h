@@ -223,6 +223,25 @@ exit:
     return return_value;
 }
 
+static PyObject *
+builtin_cmp(PyObject *self, PyObject *args)
+{
+    PyObject *a, *b;
+    int c;
+
+    if (!PyArg_UnpackTuple(args, "cmp", 2, 2, &a, &b))
+        return NULL;
+    if (PyObject_Cmp(a, b, &c) < 0)
+        return NULL;
+    return PyLong_FromLong((long)c);
+}
+
+PyDoc_STRVAR(cmp_doc,
+"cmp(x, y) -> integer\n\
+\n\
+Return negative if x<y, zero if x==y, positive if x>y.");
+
+
 PyDoc_STRVAR(builtin_compile__doc__,
 "compile($module, /, source, filename, mode, flags=0,\n"
 "        dont_inherit=False, optimize=-1, *, _feature_version=-1)\n"

@@ -161,6 +161,26 @@ Object Protocol
    If *o1* and *o2* are the same object, :c:func:`PyObject_RichCompareBool`
    will always return ``1`` for :const:`Py_EQ` and ``0`` for :const:`Py_NE`.
 
+.. c:function:: int PyObject_Cmp(PyObject *o1, PyObject *o2, int *result)
+
+   .. index:: builtin: cmp
+
+   Compare the values of *o1* and *o2* using a routine provided by *o1*, if one
+   exists, otherwise with a routine provided by *o2*.  The result of the comparison
+   is returned in *result*.  Returns ``-1`` on failure.  This is the equivalent of
+   the Python statement ``result = cmp(o1, o2)``.
+
+
+.. c:function:: int PyObject_Compare(PyObject *o1, PyObject *o2)
+
+   .. index:: builtin: cmp
+
+   Compare the values of *o1* and *o2* using a routine provided by *o1*, if one
+   exists, otherwise with a routine provided by *o2*.  Returns the result of the
+   comparison on success.  On error, the value returned is undefined; use
+   :c:func:`PyErr_Occurred` to detect an error.  This is equivalent to the Python
+   expression ``cmp(o1, o2)``.
+
 .. c:function:: PyObject* PyObject_Repr(PyObject *o)
 
    .. index:: builtin: repr

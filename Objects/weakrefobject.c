@@ -415,6 +415,13 @@ proxy_checkref(PyWeakReference *proxy)
             o = PyWeakref_GET_OBJECT(o); \
         }
 
+#define UNWRAP_I(o) \
+        if (PyWeakref_CheckProxy(o)) { \
+            if (!proxy_checkref((PyWeakReference *)o)) \
+                return -1; \
+            o = PyWeakref_GET_OBJECT(o); \
+        }
+
 #define WRAP_UNARY(method, generic) \
     static PyObject * \
     method(PyObject *proxy) { \
@@ -496,6 +503,14 @@ proxy_setattr(PyWeakReference *proxy, PyObject *name, PyObject *value)
     int res = PyObject_SetAttr(obj, name, value);
     Py_DECREF(obj);
     return res;
+}
+
+static int
+proxy_compare(PyObject *proxy, PyObject *v)
+{
+    UNWRAP_I(proxy);
+    UNWRAP_I(v);
+    return PyObject_Compare(proxy, v);
 }
 
 static PyObject *

@@ -4196,8 +4196,6 @@ class TestSignatureDefinitions(unittest.TestCase):
             if (name in no_signature):
                 # Not yet converted
                 continue
-            with self.subTest(builtin=name):
-                self.assertIsNotNone(inspect.signature(obj))
         # Check callables that haven't been converted don't claim a signature
         # This ensures this test will start failing as more signatures are
         # added, so the affected items can be moved into the scope of the

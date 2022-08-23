@@ -6842,6 +6842,33 @@ wrap_objobjargproc(PyObject *self, PyObject *args, void *wrapped)
 }
 
 static PyObject *
+wrap_cmpfunc(PyObject *self, PyObject *args, void *wrapped)
+{
+    int res = 0;
+    PyObject *other;
+
+      if (Py_Py2xWarningFlag &&
+        PyErr_WarnEx_WithFix(PyExc_Py2xWarning, "the cmp method is not supported in 3.x",
+        "you can either provide your own alternative or use a third party library with a "
+         "backwards compatible fix", 1) < 0) {
+        return 0;
+    }
+
+    if (!check_num_args(args, 1))
+        return NULL;
+    other = PyTuple_GET_ITEM(args, 0);
+    if (self == other)
+        return 0;
+    if (PyObject_Cmp(self, other, &res) < 0)
+        return -2;
+    if (res != 0)
+        return res;
+    if (PyErr_Occurred())
+        return NULL;
+    return PyLong_FromLong((long)res);
+}
+
+static PyObject *
 wrap_delitem(PyObject *self, PyObject *args, void *wrapped)
 {
     objobjargproc func = (objobjargproc)wrapped;
@@ -8034,6 +8061,8 @@ static slotdef slotdefs[] = {
            "__lt__($self, value, /)\n--\n\nReturn self<value."),
     TPSLOT("__le__", tp_richcompare, slot_tp_richcompare, richcmp_le,
            "__le__($self, value, /)\n--\n\nReturn self<=value."),
+    TPSLOT("__cmp__", tp_richcompare, slot_tp_richcompare, richcmp_ge,
+           "x.__cmp__(y) <==> cmp(x,y)"),
     TPSLOT("__eq__", tp_richcompare, slot_tp_richcompare, richcmp_eq,
            "__eq__($self, value, /)\n--\n\nReturn self==value."),
     TPSLOT("__ne__", tp_richcompare, slot_tp_richcompare, richcmp_ne,

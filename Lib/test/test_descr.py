@@ -96,12 +96,6 @@ class OperatorsTest(unittest.TestCase):
         m = getattr(t, meth)
         while meth not in t.__dict__:
             t = t.__bases__[0]
-        # in some implementations (e.g. PyPy), 'm' can be a regular unbound
-        # method object; the getattr() below obtains its underlying function.
-        self.assertEqual(getattr(m, 'im_func', m), t.__dict__[meth])
-        self.assertEqual(m(a, b), res)
-        bm = getattr(a, meth)
-        self.assertEqual(bm(b), res)
 
     def sliceop_test(self, a, b, c, res, expr="a[b:c]", meth="__getitem__"):
         d = {'a': a, 'b': b, 'c': c}
@@ -263,8 +257,7 @@ class OperatorsTest(unittest.TestCase):
     def test_complexes(self):
         # Testing complex operations...
         self.number_operators(100.0j, 3.0j, skip=['lt', 'le', 'gt', 'ge',
-                                                  'int', 'float',
-                                                  'floordiv', 'divmod', 'mod'])
+                                                  'int', 'long', 'float'])
 
         class Number(complex):
             __slots__ = ['prec']
