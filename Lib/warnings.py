@@ -7,6 +7,16 @@ __all__ = ["warn", "warn_explicit", "warn_explicit_with_fix", "showwarning",
            "formatwarning", "formatwarningwithfix", "filterwarnings", "simplefilter",
            "resetwarnings", "showwarningwithfix", "catch_warnings"]
 
+def warnpy2x(message, fix, category=None, stacklevel=1):
+    """Issue a deprecation warning for Python 3.x related changes and a fix.
+
+    Warnings are omitted unless Python is started with the -3 option.
+    """
+    if sys.py2x_warning:
+        if category is None:
+            category = DeprecationWarning
+        warn(message, category, stacklevel+1)
+
 def showwarning(message, category, filename, lineno, file=None, line=None):
     """Hook to write a warning to a file; replace if you like."""
     msg = WarningMessage(message, category, filename, lineno, file, line)
@@ -401,7 +411,6 @@ def _next_external_frame(frame):
         frame = frame.f_back
     return frame
 
-
 # Code typically replaced by _warnings
 def warn(message, category=None, stacklevel=1, source=None):
     """Issue a warning, or maybe ignore it or raise an exception."""
@@ -513,78 +522,6 @@ def warn_explicit(message, category, filename, lineno,
     msg = WarningMessage(message, category, filename, lineno, source)
     _showwarnmsg(msg)
 
-def warn_explicit_with_fix(message, fix, category, filename, lineno,
-                  module=None, registry=None, module_globals=None,
-                  source=None):
-    lineno = int(lineno)
-    if module is None:
-        module = filename or "<unknown>"
-        if module[-3:].lower() == ".py":
-            module = module[:-3] # XXX What about leading pathname?
-    if registry is None:
-        registry = {}
-    if registry.get('version', 0) != _filters_version:
-        registry.clear()
-        registry['version'] = _filters_version
-    if isinstance(message, Warning):
-        text = str(message)
-        category = message.__class__
-    else:
-        text = message
-        message = category(message)
-    key = (text, category, lineno)
-    # Quick test for common case
-    if registry.get(key):
-        return
-    # Search the filters
-    for item in filters:
-        action, msg, cat, mod, ln = item
-        if ((msg is None or msg.match(text)) and
-            issubclass(category, cat) and
-            (mod is None or mod.match(module)) and
-            (ln == 0 or lineno == ln)):
-            break
-    else:
-        action = defaultaction
-    # Early exit actions
-    if action == "ignore":
-        return
-
-    # Prime the linecache for formatting, in case the
-    # "file" is actually in a zipfile or something.
-    import linecache
-    linecache.getlines(filename, module_globals)
-
-    if action == "error":
-        raise message
-    # Other actions
-    if action == "once":
-        registry[key] = 1
-        oncekey = (text, category)
-        if onceregistry.get(oncekey):
-            return
-        onceregistry[oncekey] = 1
-    elif action == "always":
-        pass
-    elif action == "module":
-        registry[key] = 1
-        altkey = (text, category, 0)
-        if registry.get(altkey):
-            return
-        registry[altkey] = 1
-    elif action == "default":
-        registry[key] = 1
-    else:
-        # Unrecognized actions are errors
-        raise RuntimeError(
-              "Unrecognized action (%r) in warnings.filters:\n %s" %
-              (action, item))
-    # Print message, fix and context
-    msg = WarningMessageAndFix(message, fix, category, filename, lineno, source)
-    _showwarnmsgwithfix(msg)
-
-
-
 class WarningMessage(object):
 
     _WARNING_DETAILS = ("message", "category", "filename", "lineno", "file",
@@ -625,7 +562,7 @@ class WarningMessageAndFix(object):
 
     def __str__(self):
         return ("{message : %r, fix : %r, category : %r, filename : %r, lineno : %s, "
-                    "line : %r}" % (self.message, self._category_name,
+                    "line : %r}" % (self.message, self.fix, self._category_name,
                                     self.filename, self.lineno, self.line))
 
 
