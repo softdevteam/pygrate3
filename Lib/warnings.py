@@ -3,9 +3,19 @@
 import sys
 
 
-__all__ = ["warn", "warn_explicit", "warn_explicit_with_fix", "showwarning",
+__all__ = ["warn", "warn_explicit", "warn_with_fix" "warn_explicit_with_fix", "showwarning",
            "formatwarning", "formatwarningwithfix", "filterwarnings", "simplefilter",
            "resetwarnings", "showwarningwithfix", "catch_warnings"]
+
+def warnpy2x(message, fix, category=None, stacklevel=1):
+    """Issue a deprecation warning for Python 3.x related changes and a fix.
+
+    Warnings are omitted unless Python is started with the -3 option.
+    """
+    if sys.py2x_warning:
+        if category is None:
+            category = DeprecationWarning
+        warn_with_fix(message, fix, category, stacklevel+1)
 
 def showwarning(message, category, filename, lineno, file=None, line=None):
     """Hook to write a warning to a file; replace if you like."""
@@ -401,7 +411,6 @@ def _next_external_frame(frame):
         frame = frame.f_back
     return frame
 
-
 # Code typically replaced by _warnings
 def warn(message, category=None, stacklevel=1, source=None):
     """Issue a warning, or maybe ignore it or raise an exception."""
@@ -513,6 +522,68 @@ def warn_explicit(message, category, filename, lineno,
     msg = WarningMessage(message, category, filename, lineno, source)
     _showwarnmsg(msg)
 
+class WarningMessage(object):
+
+    _WARNING_DETAILS = ("message", "category", "filename", "lineno", "file",
+                        "line", "source")
+
+    def __init__(self, message, category, filename, lineno, file=None,
+                 line=None, source=None):
+        self.message = message
+        self.category = category
+        self.filename = filename
+        self.lineno = lineno
+        self.file = file
+        self.line = line
+        self.source = source
+        self._category_name = category.__name__ if category else None
+
+    def __str__(self):
+        return ("{message : %r, category : %r, filename : %r, lineno : %s, "
+                    "line : %r}" % (self.message, self._category_name,
+                                    self.filename, self.lineno, self.line))
+
+# Code typically replaced by _warnings
+def warn_with_fix(message, fix, category=None, stacklevel=1, source=None):
+    """Issue a warning, or maybe ignore it or raise an exception."""
+    # Check if message is already a Warning object
+    if isinstance(message, Warning):
+        category = message.__class__
+    # Check category argument
+    if category is None:
+        category = UserWarning
+    if not (isinstance(category, type) and issubclass(category, Warning)):
+        raise TypeError("category must be a Warning subclass, "
+                        "not '{:s}'".format(type(category).__name__))
+    # Get context information
+    try:
+        if stacklevel <= 1 or _is_internal_frame(sys._getframe(1)):
+            # If frame is too small to care or if the warning originated in
+            # internal code, then do not try to hide any frames.
+            frame = sys._getframe(stacklevel)
+        else:
+            frame = sys._getframe(1)
+            # Look for one frame less since the above line starts us off.
+            for x in range(stacklevel-1):
+                frame = _next_external_frame(frame)
+                if frame is None:
+                    raise ValueError
+    except ValueError:
+        globals = sys.__dict__
+        filename = "sys"
+        lineno = 1
+    else:
+        globals = frame.f_globals
+        filename = frame.f_code.co_filename
+        lineno = frame.f_lineno
+    if '__name__' in globals:
+        module = globals['__name__']
+    else:
+        module = "<string>"
+    registry = globals.setdefault("__warningregistry__", {})
+    warn_explicit(message, category, filename, lineno, module, registry,
+                  globals, source)
+
 def warn_explicit_with_fix(message, fix, category, filename, lineno,
                   module=None, registry=None, module_globals=None,
                   source=None):
@@ -579,11 +650,9 @@ def warn_explicit_with_fix(message, fix, category, filename, lineno,
         raise RuntimeError(
               "Unrecognized action (%r) in warnings.filters:\n %s" %
               (action, item))
-    # Print message, fix and context
+    # Print message and context
     msg = WarningMessageAndFix(message, fix, category, filename, lineno, source)
-    _showwarnmsgwithfix(msg)
-
-
+    _showwarnmsgwihfix(msg)
 
 class WarningMessage(object):
 
@@ -625,7 +694,7 @@ class WarningMessageAndFix(object):
 
     def __str__(self):
         return ("{message : %r, fix : %r, category : %r, filename : %r, lineno : %s, "
-                    "line : %r}" % (self.message, self._category_name,
+                    "line : %r}" % (self.message, self.fix, self._category_name,
                                     self.filename, self.lineno, self.line))
 
 
@@ -765,7 +834,7 @@ def _warn_unawaited_coroutine(coro):
 # If either if the compiled regexs are None, match anything.
 try:
     from _warnings import (filters, _defaultaction, _onceregistry,
-                           warn, warn_explicit, warn_explicit_with_fix, _filters_mutated)
+                           warn, warn_with_fix, warn_explicit, warn_explicit_with_fix, _filters_mutated)
     defaultaction = _defaultaction
     onceregistry = _onceregistry
     _warnings_defaults = True
