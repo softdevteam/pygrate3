@@ -6847,7 +6847,7 @@ wrap_cmpfunc(PyObject *self, PyObject *args, void *wrapped)
     int res = 0;
     PyObject *other;
 
-      if (Py_Py2xWarningFlag &&
+    if (Py_Py2xWarningFlag &&
         PyErr_WarnEx_WithFix(PyExc_Py2xWarning, "the cmp method is not supported in 3.x",
         "you can either provide your own alternative or use a third party library with a "
          "backwards compatible fix", 1) < 0) {
