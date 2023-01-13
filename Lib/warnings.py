@@ -3,7 +3,7 @@
 import sys
 
 
-__all__ = ["warn", "warn_explicit", "warn_explicit_with_fix", "showwarning",
+__all__ = ["warn", "warn_explicit", "warn_with_fix" "warn_explicit_with_fix", "showwarning",
            "formatwarning", "formatwarningwithfix", "filterwarnings", "simplefilter",
            "resetwarnings", "showwarningwithfix", "catch_warnings"]
 
@@ -15,7 +15,7 @@ def warnpy2x(message, fix, category=None, stacklevel=1):
     if sys.py2x_warning:
         if category is None:
             category = DeprecationWarning
-        warn(message, category, stacklevel+1)
+        warn_with_fix(message, fix, category, stacklevel+1)
 
 def showwarning(message, category, filename, lineno, file=None, line=None):
     """Hook to write a warning to a file; replace if you like."""
@@ -543,6 +543,138 @@ class WarningMessage(object):
                     "line : %r}" % (self.message, self._category_name,
                                     self.filename, self.lineno, self.line))
 
+# Code typically replaced by _warnings
+def warn_with_fix(message, fix, category=None, stacklevel=1, source=None):
+    """Issue a warning, or maybe ignore it or raise an exception."""
+    # Check if message is already a Warning object
+    if isinstance(message, Warning):
+        category = message.__class__
+    # Check category argument
+    if category is None:
+        category = UserWarning
+    if not (isinstance(category, type) and issubclass(category, Warning)):
+        raise TypeError("category must be a Warning subclass, "
+                        "not '{:s}'".format(type(category).__name__))
+    # Get context information
+    try:
+        if stacklevel <= 1 or _is_internal_frame(sys._getframe(1)):
+            # If frame is too small to care or if the warning originated in
+            # internal code, then do not try to hide any frames.
+            frame = sys._getframe(stacklevel)
+        else:
+            frame = sys._getframe(1)
+            # Look for one frame less since the above line starts us off.
+            for x in range(stacklevel-1):
+                frame = _next_external_frame(frame)
+                if frame is None:
+                    raise ValueError
+    except ValueError:
+        globals = sys.__dict__
+        filename = "sys"
+        lineno = 1
+    else:
+        globals = frame.f_globals
+        filename = frame.f_code.co_filename
+        lineno = frame.f_lineno
+    if '__name__' in globals:
+        module = globals['__name__']
+    else:
+        module = "<string>"
+    registry = globals.setdefault("__warningregistry__", {})
+    warn_explicit(message, category, filename, lineno, module, registry,
+                  globals, source)
+
+def warn_explicit_with_fix(message, fix, category, filename, lineno,
+                  module=None, registry=None, module_globals=None,
+                  source=None):
+    lineno = int(lineno)
+    if module is None:
+        module = filename or "<unknown>"
+        if module[-3:].lower() == ".py":
+            module = module[:-3] # XXX What about leading pathname?
+    if registry is None:
+        registry = {}
+    if registry.get('version', 0) != _filters_version:
+        registry.clear()
+        registry['version'] = _filters_version
+    if isinstance(message, Warning):
+        text = str(message)
+        category = message.__class__
+    else:
+        text = message
+        message = category(message)
+    key = (text, category, lineno)
+    # Quick test for common case
+    if registry.get(key):
+        return
+    # Search the filters
+    for item in filters:
+        action, msg, cat, mod, ln = item
+        if ((msg is None or msg.match(text)) and
+            issubclass(category, cat) and
+            (mod is None or mod.match(module)) and
+            (ln == 0 or lineno == ln)):
+            break
+    else:
+        action = defaultaction
+    # Early exit actions
+    if action == "ignore":
+        return
+
+    # Prime the linecache for formatting, in case the
+    # "file" is actually in a zipfile or something.
+    import linecache
+    linecache.getlines(filename, module_globals)
+
+    if action == "error":
+        raise message
+    # Other actions
+    if action == "once":
+        registry[key] = 1
+        oncekey = (text, category)
+        if onceregistry.get(oncekey):
+            return
+        onceregistry[oncekey] = 1
+    elif action == "always":
+        pass
+    elif action == "module":
+        registry[key] = 1
+        altkey = (text, category, 0)
+        if registry.get(altkey):
+            return
+        registry[altkey] = 1
+    elif action == "default":
+        registry[key] = 1
+    else:
+        # Unrecognized actions are errors
+        raise RuntimeError(
+              "Unrecognized action (%r) in warnings.filters:\n %s" %
+              (action, item))
+    # Print message and context
+    msg = WarningMessageAndFix(message, fix, category, filename, lineno, source)
+    _showwarnmsgwihfix(msg)
+
+class WarningMessage(object):
+
+    _WARNING_DETAILS = ("message", "category", "filename", "lineno", "file",
+                        "line", "source")
+
+    def __init__(self, message, category, filename, lineno, file=None,
+                 line=None, source=None):
+        self.message = message
+        self.category = category
+        self.filename = filename
+        self.lineno = lineno
+        self.file = file
+        self.line = line
+        self.source = source
+        self._category_name = category.__name__ if category else None
+
+    def __str__(self):
+        return ("{message : %r, category : %r, filename : %r, lineno : %s, "
+                    "line : %r}" % (self.message, self._category_name,
+                                    self.filename, self.lineno, self.line))
+
 class WarningMessageAndFix(object):
 
     _WARNING_DETAILS = ("message", "fix", "category", "filename", "lineno", "file",
@@ -702,7 +834,7 @@ def _warn_unawaited_coroutine(coro):
 # If either if the compiled regexs are None, match anything.
 try:
     from _warnings import (filters, _defaultaction, _onceregistry,
-                           warn, warn_explicit, warn_explicit_with_fix, _filters_mutated)
+                           warn, warn_with_fix, warn_explicit, warn_explicit_with_fix, _filters_mutated)
     defaultaction = _defaultaction
     onceregistry = _onceregistry
     _warnings_defaults = True
