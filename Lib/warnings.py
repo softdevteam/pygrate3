@@ -7,6 +7,16 @@ __all__ = ["warn", "warn_explicit", "warn_explicit_with_fix", "showwarning",
            "formatwarning", "formatwarningwithfix", "filterwarnings", "simplefilter",
            "resetwarnings", "showwarningwithfix", "catch_warnings"]
 
+def warnpy2x(message, fix, category=None, stacklevel=1):
+    """Issue a deprecation warning for Python 3.x related changes and a fix.
+
+    Warnings are omitted unless Python is started with the -2 option.
+    """
+    if sys.py2x_warning:
+        if category is None:
+            category = DeprecationWarning
+        warn_fix(message, fix, category, stacklevel+1)
+
 def showwarning(message, category, filename, lineno, file=None, line=None):
     """Hook to write a warning to a file; replace if you like."""
     msg = WarningMessage(message, category, filename, lineno, file, line)
