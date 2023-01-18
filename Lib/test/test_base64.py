@@ -5,6 +5,7 @@ import os
 from array import array
 from test.support import os_helper
 from test.support import script_helper
+from test.support import warnings_helper
 
 
 class LegacyBase64TestCase(unittest.TestCase):
@@ -17,6 +18,11 @@ class LegacyBase64TestCase(unittest.TestCase):
         self.assertRaises(TypeError, f, multidimensional)
         int_data = memoryview(b"1234").cast('I')
         self.assertRaises(TypeError, f, int_data)
+
+    def test_py2x_base64_empty_string(self):
+        expected = "base64.EMPTYSTRING is not supported in 3.x: introduce an alias"
+        with warnings_helper.check_py2x_warnings(expected, DeprecationWarning):
+            from base64 import EMPTYSTRING
 
     def test_encodebytes(self):
         eq = self.assertEqual

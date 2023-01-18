@@ -29,6 +29,13 @@ __all__ = [
     ]
 
 
+EMPTYSTRING = ''
+from warnings import warnpy2x
+warnpy2x("base64.EMPTYSTRING is not supported in 3.x", 
+                  "introduce an alias", stacklevel=2)
+del warnpy2x
+
+
 bytes_types = (bytes, bytearray)  # Types acceptable as binary data
 
 def _bytes_from_decode_data(s):
