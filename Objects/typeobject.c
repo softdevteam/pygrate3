@@ -7044,6 +7044,24 @@ wrap_next(PyObject *self, PyObject *args, void *wrapped)
 }
 
 static PyObject *
+wrap_next_warn(PyObject *self, PyObject *args, void *wrapped)
+{
+    unaryfunc func = (unaryfunc)wrapped;
+    PyObject *res;
+
+    if (PyErr_WarnPy2x("The attribute 'x.next' is not supported in 3.x", 
+                               "use 'x.__next__'.", 1) < 0)
+        return NULL;
+
+    if (!check_num_args(args, 0))
+        return NULL;
+    res = (*func)(self);
+    if (res == NULL && !PyErr_Occurred())
+        PyErr_SetNone(PyExc_StopIteration);
+    return res;
+}
+
+static PyObject *
 wrap_descr_get(PyObject *self, PyObject *args, void *wrapped)
 {
     descrgetfunc func = (descrgetfunc)wrapped;
@@ -8075,6 +8093,8 @@ static slotdef slotdefs[] = {
            "__iter__($self, /)\n--\n\nImplement iter(self)."),
     TPSLOT("__next__", tp_iternext, slot_tp_iternext, wrap_next,
            "__next__($self, /)\n--\n\nImplement next(self)."),
+    TPSLOT("next", tp_iternext, slot_tp_iternext, wrap_next_warn,
+           "x.next() <==> next(x)"),
     TPSLOT("__get__", tp_descr_get, slot_tp_descr_get, wrap_descr_get,
            "__get__($self, instance, owner, /)\n--\n\nReturn an attribute of instance, which is of type owner."),
     TPSLOT("__set__", tp_descr_set, slot_tp_descr_set, wrap_descr_set,

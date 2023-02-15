@@ -1247,6 +1247,29 @@ class BuiltinTest(unittest.TestCase):
         self.assertRaises(StopIteration, next, it)
         self.assertEqual(next(it, 42), 42)
 
+    def test_dunder_next(self):
+        it = iter(range(2))
+        self.assertEqual(it.next(), 0)
+        self.assertEqual(it.next(), 1)
+        self.assertRaises(StopIteration, it.next)
+        self.assertRaises(StopIteration, it.next)
+
+        class Iter(object):
+            def __iter__(self):
+                return self
+            def __next__(self):
+                raise StopIteration
+
+        it = iter(Iter())
+
+        def gen():
+            yield 1
+            return
+
+        it = gen()
+        self.assertEqual(it.next(), 1)
+        self.assertRaises(StopIteration, it.next)
+
     def test_oct(self):
         self.assertEqual(oct(100), '0o144')
         self.assertEqual(oct(-100), '-0o144')
