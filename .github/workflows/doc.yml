@@ -50,7 +50,7 @@ jobs:
     - name: 'Build HTML documentation'
       run: make -C Doc/ PYTHON=../python SPHINXOPTS="-q -W --keep-going" html
     - name: 'Upload'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: doc-html
         path: Doc/build/html
