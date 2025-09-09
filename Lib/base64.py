@@ -9,6 +9,8 @@
 import re
 import struct
 import binascii
+from warnings import warn
+from functools import wraps
 
 
 __all__ = [
@@ -608,7 +610,23 @@ def test():
     s2 = decodebytes(s1)
     print(repr(s2))
     assert s0 == s2
+    
+def _warn_encode(func, name):
+    @wraps(func)
+    def encode_wrapper(*args, **kwargs):
+        warn(
+            f"PYGRATE3: base64.{name} returns bytes in Python 3 (str in 2.x)",
+            UserWarning,
+            stacklevel=2
+        )
+        return func(*args, **kwargs)
+    return encode_wrapper
 
+_WARAP_FUNC = ["b64encode", "b32encode", "b16encode", "encodebytes"]
+for _name in _WARAP_FUNC:
+    if _name in __all__:
+        globals()[_name] = _warn_encode(globals()[_name], _name)
+        
 
 if __name__ == '__main__':
     main()

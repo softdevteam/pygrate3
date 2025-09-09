@@ -177,6 +177,13 @@ class BaseXYTestCase(unittest.TestCase):
         self.check_other_types(base64.urlsafe_b64encode,
                                b'\xd3V\xbeo\xf7\x1d', b'01a-b_cd')
         self.check_encode_type_errors(base64.urlsafe_b64encode)
+        
+    def test_b64encode_warns(self):
+        import warnings, base64
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always', UserWarning)
+            base64.b64encode(b'test')
+            self.assertTrue(any('PYGRATE3' in str(x.message) for x in w))
 
     def test_b64decode(self):
         eq = self.assertEqual
