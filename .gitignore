@@ -23,6 +23,7 @@
 *.profraw
 *.dyn
 .gdb_history
+.history/
 .purify
 __pycache__
 .hg/
