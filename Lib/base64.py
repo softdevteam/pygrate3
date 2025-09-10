@@ -615,7 +615,7 @@ def _warn_encode(func, name):
     @wraps(func)
     def encode_wrapper(*args, **kwargs):
         warn(
-            f"PYGRATE3: base64.{name} returns bytes in Python 3 (str in 2.x)",
+            f"base64.{name} returns bytes in Python 3 (str in 2.x)",
             UserWarning,
             stacklevel=2
         )
