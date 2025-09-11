@@ -622,8 +622,7 @@ def _warn_encode(func, name):
         return func(*args, **kwargs)
     return encode_wrapper
 
-_WARAP_FUNC = ["b64encode", "b32encode", "b16encode", "encodebytes"]
-for _name in _WARAP_FUNC:
+for _name in ["b64encode", "b32encode", "b16encode", "encodebytes"]:
     if _name in __all__:
         globals()[_name] = _warn_encode(globals()[_name], _name)
         
