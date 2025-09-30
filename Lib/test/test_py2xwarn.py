@@ -25,6 +25,22 @@ class TestPy2xWarnings(unittest.TestCase):
             self.assertWarning(iterator_marks.next(), w, expected)
             w.reset()
             self.assertNoWarning(iterator_marks.__next__(), w)
+            
+    def test_dict(self):
+        expected = [
+            "dict_values() returns a view in 3.x, not a list. Use list(dict_values()) instead"
+            "dict_keys() returns a view in 3.x, not a list. Use list(dict_keys()) instead"
+            "dict_items() returns a view in 3.x, not a list. Use list(dict_items()) instead"
+        ]
+        test = {"a":1}
+        
+        with check_py2x_warnings() as w:
+            self.assertWarning(test.values(), w, expected[0])
+            w.reset()
+            self.assertWarning(test.keys(), w, expected[1])
+            w.reset()
+            self.assertWarning(test.items(), w, expected[2])
+            
 
 if __name__ == '__main__':
     unittest.main()

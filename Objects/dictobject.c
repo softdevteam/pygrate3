@@ -4589,6 +4589,11 @@ _PyDictView_New(PyObject *dict, PyTypeObject *type)
         return NULL;
     Py_INCREF(dict);
     dv->dv_dict = (PyDictObject *)dict;
+    if (Py_Py2xWarningFlag && PyErr_WarnFormat(PyExc_Py2xWarning, 1, 
+        "%s() returns a view in 3.x, not a list. Use list(%s()) instead",
+        type->tp_name, type->tp_name) < 0){
+            return NULL;
+    }
     _PyObject_GC_TRACK(dv);
     return (PyObject *)dv;
 }
