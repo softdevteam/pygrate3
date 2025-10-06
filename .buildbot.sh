@@ -2,6 +2,6 @@
 
 set -e
 
-./configure --enable-optimizations
+./configure
 make -j `nproc`
 ./python -m test
