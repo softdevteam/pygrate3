@@ -15,6 +15,16 @@ class TestPy2xWarnings(unittest.TestCase):
 
     def assertNoWarning(self, _, recorder):
         self.assertEqual(len(recorder.warnings), 0)
+    
+    def test_map_warning(self):
+        with check_py2x_warnings() as w:
+            expected = "map(...) returns map object in 3.x, not a list. Change to list(map(...))"
+            self.assertWarning(map(lambda x: x, [1, 2, 3]), w, expected)
+    
+    def test_filter_warning(self):
+        with check_py2x_warnings() as w:
+            expected = "filter(...) returns filter object in 3.x, not a list. Change to list(filter(...))"
+            self.assertWarning(filter(lambda x: x%2==0, [1, 2, 3]), w, expected)
 
     def test_next(self):
         marks = [65, 71, 68, 74, 61]

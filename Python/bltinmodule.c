@@ -549,6 +549,13 @@ filter_vectorcall(PyObject *type, PyObject * const*args,
     lz->func = Py_NewRef(args[0]);
     lz->it = it;
 
+    if (Py_Py2xWarningFlag && PyErr_WarnEx(
+        PyExc_Py2xWarning,
+        "filter(...) returns filter object in 3.x, not a list. Change to list(filter(...))",
+        2) < 0){
+            return NULL;
+    }
+
     return (PyObject *)lz;
 }
 
@@ -1249,7 +1256,6 @@ map_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
            "map() must have at least two arguments.");
         return NULL;
     }
-
     iters = PyTuple_New(numargs-1);
     if (iters == NULL)
         return NULL;
@@ -1314,6 +1320,13 @@ map_vectorcall(PyObject *type, PyObject * const*args,
     }
     lz->iters = iters;
     lz->func = Py_NewRef(args[0]);
+
+    if (Py_Py2xWarningFlag && PyErr_WarnEx(
+        PyExc_Py2xWarning,
+        "map(...) returns map object in 3.x, not a list. Change to list(map(...))",
+        2) < 0){
+            return NULL;
+    }
 
     return (PyObject *)lz;
 }
