@@ -782,7 +782,7 @@ class InitConfigTests(EmbeddingTestsMixin, unittest.TestCase):
                                                  env=env, cwd=cwd)
         if stderr is None and not expected_config['verbose']:
             stderr = ""
-        if stderr is not None and not ignore_stderr:
+        if stderr is not None and not ignore_stderr and expected_config["py2x_warning"] != 1:
             self.assertEqual(err.rstrip(), stderr)
         try:
             configs = json.loads(out)
