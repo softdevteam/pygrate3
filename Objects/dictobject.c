@@ -5081,11 +5081,38 @@ static PyObject* dictkeys_reversed(_PyDictViewObject *dv, PyObject *Py_UNUSED(ig
 PyDoc_STRVAR(reversed_keys_doc,
 "Return a reverse iterator over the dict keys.");
 
+/*No-Operation for dictview.sort(), Just warn under -2 flag*/
+static PyObject *
+dictview_noop(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    if (Py_Py2xWarningFlag){
+        const char *type = Py_TYPE(self)->tp_name;
+        if (PyErr_WarnFormat(PyExc_Py2xWarning, 1,
+            "%s.sort: in Python 3, %s() returns an iterable view; "
+            "views do not support .sort(). Use list(%s()).sort() or sorted(%s()).",
+            type, type, type, type) < 0) {
+            return NULL;
+        }
+        Py_RETURN_NONE;
+    }
+    else{
+        return PyErr_Format(PyExc_AttributeError,
+                            "'%s' object has no attribute 'sort'",
+                            Py_TYPE(self)->tp_name);
+    }
+}
+
 static PyMethodDef dictkeys_methods[] = {
     {"isdisjoint",      (PyCFunction)dictviews_isdisjoint,  METH_O,
      isdisjoint_doc},
     {"__reversed__",    _PyCFunction_CAST(dictkeys_reversed),    METH_NOARGS,
      reversed_keys_doc},
+    {"reverse",    _PyCFunction_CAST(dictkeys_reversed),    METH_NOARGS,
+     reversed_keys_doc},
+    {"sort",
+     _PyCFunction_CAST(dictview_noop),
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("No-op: warn that dict key object have no .sort attribute")},
     {NULL,              NULL}           /* sentinel */
 };
 
@@ -5133,6 +5160,15 @@ dictkeys_reversed(_PyDictViewObject *dv, PyObject *Py_UNUSED(ignored))
 {
     if (dv->dv_dict == NULL) {
         Py_RETURN_NONE;
+    }
+    if (Py_Py2xWarningFlag){
+        const char *type = Py_TYPE(dv)->tp_name;
+        if (PyErr_WarnFormat(PyExc_Py2xWarning, 1,
+            "%s.reverse: in Python 3, %s() returns an iterable view; "
+            "views do not support .reverse(). Use list(%s()).reverse() or reversed(list(%s())) or list(%s().__reversed__())",
+            type, type, type, type, type) < 0) {
+            return NULL;
+        }
     }
     return dictiter_new(dv->dv_dict, &PyDictRevIterKey_Type);
 }
@@ -5192,6 +5228,12 @@ static PyMethodDef dictitems_methods[] = {
      isdisjoint_doc},
     {"__reversed__",    (PyCFunction)dictitems_reversed,    METH_NOARGS,
      reversed_items_doc},
+    {"reverse",    (PyCFunction)dictitems_reversed,    METH_NOARGS,
+     reversed_items_doc},
+    {"sort",
+     _PyCFunction_CAST(dictview_noop),
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("No-op: warn that dict items object have no .sort attribute")},
     {NULL,              NULL}           /* sentinel */
 };
 
@@ -5273,6 +5315,12 @@ PyDoc_STRVAR(reversed_values_doc,
 static PyMethodDef dictvalues_methods[] = {
     {"__reversed__",    (PyCFunction)dictvalues_reversed,    METH_NOARGS,
      reversed_values_doc},
+    {"reverse",    (PyCFunction)dictvalues_reversed,    METH_NOARGS,
+     reversed_values_doc},
+    {"sort",
+     _PyCFunction_CAST(dictview_noop),
+     METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("No-op: warn that dict values object have no .sort attribute")},
     {NULL,              NULL}           /* sentinel */
 };
 
