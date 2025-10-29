@@ -2846,6 +2846,26 @@ _io_TextIOWrapper_truncate_impl(textio *self, PyObject *pos)
         return NULL;
     Py_DECREF(res);
 
+    if(Py_Py2xWarningFlag){
+        if (pos != Py_None && PyLong_Check(pos)) {
+            if (PyLong_AsLong(pos) == 0) {
+                PyObject *sres = PyObject_CallMethod((PyObject *)self, "seek", "i", 0);
+                if (sres == NULL)
+                    return NULL;
+                Py_DECREF(sres);
+                if (PyErr_WarnEx(PyExc_Py2xWarning,
+                    "Calling truncate(0) on text stream without seek(0)"
+                    " may produce inconsistent results. Use seek(0) before truncate(0)",
+                    2
+                    ) < 0){
+                        return NULL;
+                }
+            }
+            
+        }
+        
+    }
+
     return PyObject_CallMethodOneArg(self->buffer, &_Py_ID(truncate), pos);
 }
 

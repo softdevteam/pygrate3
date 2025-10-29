@@ -3,6 +3,8 @@ import sys
 from test.support.warnings_helper import check_py2x_warnings
 import warnings
 from test import test_support
+import tempfile
+
 
 if not sys.py2x_warning:
     raise unittest.SkipTest('%s must be run with the -2 flag' % __name__)
@@ -15,6 +17,16 @@ class TestPy2xWarnings(unittest.TestCase):
 
     def assertNoWarning(self, _, recorder):
         self.assertEqual(len(recorder.warnings), 0)
+    
+    def test_map_warning(self):
+        with check_py2x_warnings() as w:
+            expected = "map(...) returns map object in 3.x, not a list. Change to list(map(...))"
+            self.assertWarning(map(lambda x: x, [1, 2, 3]), w, expected)
+    
+    def test_filter_warning(self):
+        with check_py2x_warnings() as w:
+            expected = "filter(...) returns filter object in 3.x, not a list. Change to list(filter(...))"
+            self.assertWarning(filter(lambda x: x%2==0, [1, 2, 3]), w, expected)
 
     def test_next(self):
         marks = [65, 71, 68, 74, 61]
@@ -25,6 +37,16 @@ class TestPy2xWarnings(unittest.TestCase):
             self.assertWarning(iterator_marks.next(), w, expected)
             w.reset()
             self.assertNoWarning(iterator_marks.__next__(), w)
+            
+    def test_truncate0(self):
+        expected = "Calling truncate(0) on text stream without seek(0)" + \
+        " may produce inconsistent results. Use seek(0) before truncate(0)"
+        with check_py2x_warnings(("", Py2xWarning)) as w:
+            with tempfile.NamedTemporaryFile("w+", encoding="utf-8", delete=True) as f:
+                f.write("test")
+                f.truncate(0)
+                self.assertWarning((), w, expected)
+            
 
 if __name__ == '__main__':
     unittest.main()
