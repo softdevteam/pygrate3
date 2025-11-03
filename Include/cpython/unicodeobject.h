@@ -135,7 +135,8 @@ typedef struct {
         unsigned int ascii:1;
         /* Padding to ensure that PyUnicode_DATA() is always aligned to
            4 bytes (see issue #19537 on m68k). */
-        unsigned int :25;
+        unsigned int bstate:4
+        unsigned int :21;
     } state;
 } PyASCIIObject;
 
@@ -159,6 +160,20 @@ typedef struct {
         Py_UCS4 *ucs4;
     } data;                     /* Canonical, smallest-form Unicode buffer */
 } PyUnicodeObject;
+
+/* Macros for accessing Pygrate bstate */
+#define PyUnicode_GET_BSTATE(op) \
+    (PyUnicode_IS_COMPACT(op) ? \
+        ((PyCompactUnicodeObject *)(op))->_base.state.bstate : \
+        ((PyUnicodeObject *)(op))->_base._base.state.bstate)
+
+#define PyUnicode_SET_BSTATE(op, val) \
+    do { \
+        if (PyUnicode_IS_COMPACT(op)) \
+            ((PyCompactUnicodeObject *)(op))->_base.state.bstate = (val); \
+        else \
+            ((PyUnicodeObject *)(op))->_base._base.state.bstate = (val); \
+    } while (0)
 
 PyAPI_FUNC(int) _PyUnicode_CheckConsistency(
     PyObject *op,
