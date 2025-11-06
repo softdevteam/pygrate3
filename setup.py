@@ -940,7 +940,7 @@ class PyBuildExt(build_ext):
         self.addext(Extension('_datetime', ['_datetimemodule.c']))
         self.addext(Extension('_zoneinfo', ['_zoneinfo.c']))
         # random number generator implemented in C
-        self.addext(Extension("_random", ["_randommodule.c", "pg_bytes.c"]))
+        self.addext(Extension("_random", ["_randommodule.c"]))
         self.addext(Extension("_bisect", ["_bisectmodule.c"]))
         self.addext(Extension("_heapq", ["_heapqmodule.c"]))
         # C-optimized pickle replacement
