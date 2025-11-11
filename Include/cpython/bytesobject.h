@@ -1,10 +1,13 @@
 #ifndef Py_CPYTHON_BYTESOBJECT_H
 #  error "this header file must not be included directly"
 #endif
-
+#define BSTATE_NOT_SURE 0
+#define BSTATE_BYTE 1
+#define BSTATE_UNICODE 2
 typedef struct {
     PyObject_VAR_HEAD
     Py_DEPRECATED(3.11) Py_hash_t ob_shash;
+    unsigned int bstate;
     char ob_sval[1];
 
     /* Invariants:
@@ -13,6 +16,13 @@ typedef struct {
      *     ob_shash is the hash of the byte string or -1 if not computed yet.
      */
 } PyBytesObject;
+
+#define PyBytes_GET_BSTATE(op)       (((PyBytesObject *)(op))->bstate)
+#define PyBytes_SET_BSTATE(op, val)  (((PyBytesObject *)(op))->bstate = (unsigned int)(val))
+
+#define PG_BSTATE_LOAD_BYTES(op_) \
+    (((op_) == NULL) ? BSTATE_NOT_SURE : \
+     PG_BSTATE_NORMALIZE(PyBytes_GET_BSTATE((op_))))
 
 PyAPI_FUNC(int) _PyBytes_Resize(PyObject **, Py_ssize_t);
 PyAPI_FUNC(PyObject*) _PyBytes_FormatEx(

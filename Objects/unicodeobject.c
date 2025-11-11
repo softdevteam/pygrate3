@@ -1209,6 +1209,7 @@ PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
     unicode_fill_invalid((PyObject*)unicode, 0);
 #endif
     assert(_PyUnicode_CheckConsistency((PyObject*)unicode, 0));
+    PyUnicode_SET_BSTATE(obj, BSTATE_UNICODE);
     return obj;
 }
 
@@ -10681,42 +10682,84 @@ PyUnicode_Concat(PyObject *left, PyObject *right)
     if (ensure_unicode(left) < 0)
         return NULL;
 
+    PyObject *right_u = right;
+    int need_decref_right_u = 0;
+
+    int lb = PG_BSTATE_LOAD_UNICODE(left);
+    int rb = BSTATE_NOT_SURE;
+
     if (!PyUnicode_Check(right)) {
-        PyErr_Format(PyExc_TypeError,
+        if (Py_Py2xWarningFlag && PyBytes_Check(right)) {
+            const char *buf = PyBytes_AS_STRING(right);
+            Py_ssize_t n = PyBytes_GET_SIZE(right);
+            right_u = PyUnicode_DecodeLatin1(buf, n, NULL);
+            if (right_u == NULL)
+                return NULL;
+            need_decref_right_u = 1;
+            rb = BSTATE_BYTE;
+            PyBytes_SET_BSTATE(right, BSTATE_BYTE);
+        }
+        else {
+            PyErr_Format(PyExc_TypeError,
                      "can only concatenate str (not \"%.200s\") to str",
                      Py_TYPE(right)->tp_name);
-        return NULL;
+            return NULL;
+        }
+    }
+    else{
+        if(Py_Py2xWarningFlag){
+                rb = PG_BSTATE_LOAD_BYTES(right);
+            }
     }
 
     /* Shortcuts */
     PyObject *empty = unicode_get_empty();  // Borrowed reference
     if (left == empty) {
-        return PyUnicode_FromObject(right);
+        PyObject *r = PyUnicode_FromObject(right_u);
+        if (need_decref_right_u) Py_DECREF(right_u);
+        return r;
     }
-    if (right == empty) {
-        return PyUnicode_FromObject(left);
+    if (right_u == empty) {
+        PyObject *r = PyUnicode_FromObject(left);
+        if (need_decref_right_u) Py_DECREF(right_u);
+        return r;
     }
 
     left_len = PyUnicode_GET_LENGTH(left);
-    right_len = PyUnicode_GET_LENGTH(right);
+    right_len = PyUnicode_GET_LENGTH(right_u);
     if (left_len > PY_SSIZE_T_MAX - right_len) {
-        PyErr_SetString(PyExc_OverflowError,
-                        "strings are too large to concat");
+        if (need_decref_right_u) Py_DECREF(right_u);
+        PyErr_SetString(PyExc_OverflowError, "strings are too large to concat");
         return NULL;
     }
     new_len = left_len + right_len;
 
     maxchar = PyUnicode_MAX_CHAR_VALUE(left);
-    maxchar2 = PyUnicode_MAX_CHAR_VALUE(right);
+    maxchar2 = PyUnicode_MAX_CHAR_VALUE(right_u);
     maxchar = Py_MAX(maxchar, maxchar2);
 
     /* Concat the two Unicode strings */
     result = PyUnicode_New(new_len, maxchar);
-    if (result == NULL)
+    if (result == NULL) {
+        if (need_decref_right_u) Py_DECREF(right_u);
         return NULL;
+    }
     _PyUnicode_FastCopyCharacters(result, 0, left, 0, left_len);
-    _PyUnicode_FastCopyCharacters(result, left_len, right, 0, right_len);
+    _PyUnicode_FastCopyCharacters(result, left_len, right_u, 0, right_len);
     assert(_PyUnicode_CheckConsistency(result, 1));
+
+    if(Py_Py2xWarningFlag){
+        PyUnicode_SET_BSTATE(result, PG_BSTATE_MERGE(lb, rb));
+        if(lb != BSTATE_NOT_SURE && rb != BSTATE_NOT_SURE && lb != rb){
+            const char *lhs = (lb == BSTATE_UNICODE) ? "unicode" : "byte";
+            const char *rhs = (rb == BSTATE_UNICODE) ? "unicode" : "byte";
+            PyErr_WarnFormat(PyExc_Py2xWarning, 1,
+               "implicit %s + %s concatenation; Python 3 would raise TypeError",
+               lhs, rhs);
+        }
+    }
+
+    if (need_decref_right_u) Py_DECREF(right_u);
     return result;
 }
 

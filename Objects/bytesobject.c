@@ -177,6 +177,7 @@ _Py_COMP_DIAG_IGNORE_DEPR_DECLS
     op->ob_shash = -1;
 _Py_COMP_DIAG_POP
     memcpy(op->ob_sval, str, size+1);
+    PyBytes_SET_BSTATE(op, BSTATE_NOT_SURE);
     return (PyObject *) op;
 }
 

@@ -135,10 +135,14 @@ typedef struct {
         unsigned int ascii:1;
         /* Padding to ensure that PyUnicode_DATA() is always aligned to
            4 bytes (see issue #19537 on m68k). */
-        unsigned int bstate:4
+        unsigned int bstate:4;
         unsigned int :21;
     } state;
 } PyASCIIObject;
+
+#define BSTATE_NOT_SURE 0
+#define BSTATE_BYTE 1
+#define BSTATE_UNICODE 2
 
 /* Non-ASCII strings allocated through PyUnicode_New use the
    PyCompactUnicodeObject structure. state.compact is set, and the data
@@ -174,6 +178,37 @@ typedef struct {
         else \
             ((PyUnicodeObject *)(op))->_base._base.state.bstate = (val); \
     } while (0)
+
+/*
+unsure + unsure = unsure
+unsure + unicode = unicode
+unsure + byte = byte
+
+unicode + unsure = unicode
+unicode + byte = unicode
+unicode + unicode = unicode
+
+byte + unsure = byte
+byte + unicode = byte
+byte + byte = byte
+
+=> if a = unsure then depend on b, 
+   else depend on a
+
+*/
+
+#define PG_BSTATE_MERGE(a, b) \
+    (((a) == BSTATE_NOT_SURE) ? (b) : (a))
+
+#define PG_BSTATE_IS_VALID(s_) \
+    ((s_) == BSTATE_NOT_SURE || (s_) == BSTATE_BYTE || (s_) == BSTATE_UNICODE)
+
+#define PG_BSTATE_NORMALIZE(s_) \
+    (PG_BSTATE_IS_VALID((s_)) ? (s_) : BSTATE_NOT_SURE)
+
+#define PG_BSTATE_LOAD_UNICODE(op_) \
+    (((op_) == NULL) ? BSTATE_NOT_SURE : \
+     PG_BSTATE_NORMALIZE(PyUnicode_GET_BSTATE((op_))))
 
 PyAPI_FUNC(int) _PyUnicode_CheckConsistency(
     PyObject *op,
