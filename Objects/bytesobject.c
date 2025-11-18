@@ -115,6 +115,55 @@ _Py_COMP_DIAG_POP
     return (PyObject *) op;
 }
 
+static PyObject *
+bytes_format(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    if (Py_Py2xWarningFlag){
+        if (PyErr_WarnEx(
+            PyExc_Py2xWarning,
+            "bytes.format() is not supported in Python 3, "
+            "use str.format() and encode() instead.",
+            1) < 0) {
+            return NULL;
+        }
+
+        if (!PyBytes_Check(self)) {
+            PyErr_SetString(PyExc_TypeError, "expected bytes as input");
+            return NULL;
+        }
+
+        Py_ssize_t size = PyBytes_GET_SIZE(self);
+        const char *buf = PyBytes_AS_STRING(self);
+
+        PyObject *fmt_str = PyUnicode_DecodeASCII(buf, size, "surrogateescape");
+        PyObject *format_method = PyObject_GetAttrString(fmt_str, "format");
+
+        PyObject *result_str = PyObject_Call(format_method, args, kwargs);
+        Py_DECREF(format_method);
+        Py_DECREF(fmt_str);
+
+        PyObject *result_bytes = PyUnicode_AsEncodedString(
+            result_str,
+            "ascii",
+            "surrogateescape"
+        );
+
+        if (!PyBytes_Check(result_bytes)) {
+            PyErr_SetString(PyExc_TypeError, "expected bytes as output");
+            Py_DECREF(result_str);
+            return NULL;
+        }
+
+        Py_DECREF(result_str);
+        return result_bytes;
+    }
+    else{
+        return PyErr_Format(PyExc_AttributeError,
+            "'%s' object has no attribute 'format'",
+            Py_TYPE(self)->tp_name);
+    }
+}
+
 PyObject *
 PyBytes_FromStringAndSize(const char *str, Py_ssize_t size)
 {
@@ -2553,6 +2602,8 @@ bytes_methods[] = {
     BYTES_TRANSLATE_METHODDEF
     {"upper", stringlib_upper, METH_NOARGS, _Py_upper__doc__},
     STRINGLIB_ZFILL_METHODDEF
+    {"format", (PyCFunction)bytes_format, METH_VARARGS | METH_KEYWORDS,
+     PyDoc_STR("format(*args, **kwargs) -> bytes")},
     {NULL,     NULL}                         /* sentinel */
 };
 
