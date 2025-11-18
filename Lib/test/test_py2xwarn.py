@@ -46,6 +46,11 @@ class TestPy2xWarnings(unittest.TestCase):
                 f.write("test")
                 f.truncate(0)
                 self.assertWarning((), w, expected)
+    
+    def test_byteformat(self):
+        expected = "bytes.format() is not supported in Python 3, use str.format() and encode() instead."
+        with check_py2x_warnings(("", Py2xWarning)) as w:
+            self.assertWarning(b"te{}".format("st"), w, expected)
             
 
 if __name__ == '__main__':
