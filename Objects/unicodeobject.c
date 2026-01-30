@@ -1189,6 +1189,7 @@ PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
     _PyUnicode_STATE(unicode).kind = kind;
     _PyUnicode_STATE(unicode).compact = 1;
     _PyUnicode_STATE(unicode).ascii = is_ascii;
+    _PyUnicode_STATE(unicode).ob_is_from_random = 0;
     if (is_ascii) {
         ((char*)data)[size] = 0;
     }
@@ -1933,6 +1934,16 @@ _PyUnicode_FromASCII(const char *buffer, Py_ssize_t size)
     memcpy(PyUnicode_1BYTE_DATA(unicode), s, size);
     assert(_PyUnicode_CheckConsistency(unicode, 1));
     return unicode;
+}
+
+PyObject*
+_PyUnicode_FromASCII_withRandomFlag(const char *buffer, Py_ssize_t size, unsigned char flag)
+{
+    PyObject *o = _PyUnicode_FromASCII(buffer, size);
+    if (o == NULL)
+        return NULL;
+    ((PyASCIIObject *)o)->state.ob_is_from_random = flag;
+    return o;
 }
 
 static Py_UCS4
@@ -11605,7 +11616,12 @@ unicode_join(PyObject *self, PyObject *iterable)
 
 static Py_ssize_t
 unicode_length(PyObject *self)
-{
+{   
+    if(Py_Py2xWarningFlag && PyUnicode_Check(self) && ((PyASCIIObject *)self)->state.ob_is_from_random == 1)
+        PyErr_WarnEx(
+            PyExc_Py2xWarning,
+            "String repr of random.random() is longer in 3.x, change code accordingly",
+            1);
     return PyUnicode_GET_LENGTH(self);
 }
 

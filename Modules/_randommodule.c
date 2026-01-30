@@ -177,7 +177,11 @@ _random_Random_random_impl(RandomObject *self)
 /*[clinic end generated code: output=117ff99ee53d755c input=afb2a59cbbb00349]*/
 {
     uint32_t a=genrand_uint32(self)>>5, b=genrand_uint32(self)>>6;
-    return PyFloat_FromDouble((a*67108864.0+b)*(1.0/9007199254740992.0));
+    double x = (a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
+    if (Py_Py2xWarningFlag)
+        return _PyFloat_FromDoubleWithFlags(x, 1);
+    else
+        return PyFloat_FromDouble(x);
 }
 
 /* initializes mt[N] with a seed */

@@ -5,12 +5,14 @@
 typedef struct {
     PyObject_HEAD
     double ob_fval;
+    _Bool ob_is_from_random;
 } PyFloatObject;
 
 // Macro version of PyFloat_AsDouble() trading safety for speed.
 // It doesn't check if op is a double object.
 #define PyFloat_AS_DOUBLE(op) (((PyFloatObject *)(op))->ob_fval)
 
+PyAPI_FUNC(PyObject *) _PyFloat_FromDoubleWithFlags(double x, unsigned char flags);
 
 PyAPI_FUNC(int) PyFloat_Pack2(double x, char *p, int le);
 PyAPI_FUNC(int) PyFloat_Pack4(double x, char *p, int le);
