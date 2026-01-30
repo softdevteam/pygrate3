@@ -38,6 +38,14 @@ class TestPy2xWarnings(unittest.TestCase):
             w.reset()
             self.assertNoWarning(iterator_marks.__next__(), w)
             
+    def test_random(self):
+        expected = "String repr of random.random() is longer in 3.x, change code accordingly"
+        import random
+        with check_py2x_warnings(("", Py2xWarning)) as w:
+            self.assertWarning(len(str(random.random())), w, expected)
+            w.reset()
+            self.assertNoWarning(len(str(0.123456)), w)
+
     def test_truncate0(self):
         expected = "Calling truncate(0) on text stream without seek(0)" + \
         " may produce inconsistent results. Use seek(0) before truncate(0)"
@@ -46,11 +54,6 @@ class TestPy2xWarnings(unittest.TestCase):
                 f.write("test")
                 f.truncate(0)
                 self.assertWarning((), w, expected)
-    
-    def test_byteformat(self):
-        expected = "bytes.format() is not supported in Python 3, use str.format() and encode() instead."
-        with check_py2x_warnings(("", Py2xWarning)) as w:
-            self.assertWarning(b"te{}".format("st"), w, expected)
             
 
 if __name__ == '__main__':

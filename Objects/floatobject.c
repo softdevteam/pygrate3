@@ -153,7 +153,18 @@ PyFloat_FromDouble(double fval)
     }
     _PyObject_Init((PyObject*)op, &PyFloat_Type);
     op->ob_fval = fval;
+    op->ob_is_from_random = 0;
     return (PyObject *) op;
+}
+
+PyObject *
+_PyFloat_FromDoubleWithFlags(double x, unsigned char flag)
+{
+    PyObject *o = PyFloat_FromDouble(x);
+    if (o == NULL)
+        return NULL;
+    ((PyFloatObject *)o)->ob_is_from_random = flag;
+    return o;
 }
 
 static PyObject *
@@ -376,14 +387,16 @@ float_repr(PyFloatObject *v)
 {
     PyObject *result;
     char *buf;
-
     buf = PyOS_double_to_string(PyFloat_AS_DOUBLE(v),
                                 'r', 0,
                                 Py_DTSF_ADD_DOT_0,
                                 NULL);
     if (!buf)
         return PyErr_NoMemory();
-    result = _PyUnicode_FromASCII(buf, strlen(buf));
+    if (Py_Py2xWarningFlag)
+        result = _PyUnicode_FromASCII_withRandomFlag(buf, strlen(buf), v->ob_is_from_random);
+    else
+        result = _PyUnicode_FromASCII(buf, strlen(buf));
     PyMem_Free(buf);
     return result;
 }

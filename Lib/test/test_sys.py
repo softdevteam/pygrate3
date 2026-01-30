@@ -1390,7 +1390,11 @@ class SizeofTest(unittest.TestCase):
         # reverse
         check(reversed(''), size('nP'))
         # float
-        check(float(0), size('d'))
+        if sys.py2x_warning:
+            # plus 8 to reflect struct change for unsigned char ob_is_from_random
+            check(float(0), size('d')+8)
+        else:
+            check(float(0), size('d')+8)
         # sys.floatinfo
         check(sys.float_info, vsize('') + self.P * len(sys.float_info))
         # frame

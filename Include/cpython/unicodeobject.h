@@ -135,7 +135,8 @@ typedef struct {
         unsigned int ascii:1;
         /* Padding to ensure that PyUnicode_DATA() is always aligned to
            4 bytes (see issue #19537 on m68k). */
-        unsigned int :25;
+        unsigned int ob_is_from_random:1;
+        unsigned int :24;
     } state;
 } PyASCIIObject;
 
@@ -499,6 +500,11 @@ PyAPI_FUNC(PyObject*) PyUnicode_FromKindAndData(
 PyAPI_FUNC(PyObject*) _PyUnicode_FromASCII(
     const char *buffer,
     Py_ssize_t size);
+
+PyAPI_FUNC(PyObject*) _PyUnicode_FromASCII_withRandomFlag(
+    const char *buffer,
+    Py_ssize_t size,
+    unsigned char flag);
 
 /* Compute the maximum character of the substring unicode[start:end].
    Return 127 for an empty string. */
